@@ -1,0 +1,31 @@
+{
+  "name": "streeviewanimator",
+  "description": "A simple tool for easily creating Google Street View frame based animations.",
+  "license": "MIT",
+  "version": "0.0.0",
+  "author": "Pablo de la Peña <p@shedcollective.org>",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/hellopablo/streetviewanimator.git"
+  },
+  "keywords": [],
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-contrib-uglify": "~0.5.0",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-notify": "^0.4.1",
+    "jit-grunt": "^0.9.0"
+  },
+  "homepage": "hellopablo.github.io/streetviewanimator",
+  "main": "Gruntfile.js",
+  "dependencies": {
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-contrib-uglify": "^0.5.1",
+    "grunt-notify": "^0.4.1",
+    "grunt": "^0.4.5",
+    "jit-grunt": "^0.9.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

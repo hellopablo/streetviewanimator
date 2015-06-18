@@ -1,0 +1,3 @@
+window.streetviewanimator.player = function() {
+
+};
