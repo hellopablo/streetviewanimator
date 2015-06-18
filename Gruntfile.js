@@ -5,7 +5,7 @@ module.exports = function(grunt) {
     uglify: {
       compressed: {
         files: {
-          'dist/streetviewanimator.min.js': ['src/controller.js','src/*.js']
+          'dist/streetviewanimator.min.js': ['src/main.js','src/*.js']
         },
         options: {
           sourceMap: true,

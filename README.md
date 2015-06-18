@@ -33,7 +33,7 @@ The following options are available to you:
 
 I welcome contirbutions to streetviewanimator. Fork the repo and submit a pull request. Please ensure that streetviewanimator.js compiles and that any relevant documentation is updated before sending the pull request.
 
-### Compiling LESS and JS
+### Compiling the JS
 
 I use Grunt to compile everything. Firstly, install `grunt-cli` globally. It's recommended to run the grunt client on a per-project basis, so if you have it installed globally, remove it.
 

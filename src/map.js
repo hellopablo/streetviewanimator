@@ -1,10 +1,10 @@
 /**
- * This class provides an interface for playing streetview animator animations.
- * @param  {Object} options       The player options
+ * This class provides an interface for creating and manipulating map DOM elements
+ * @param  {Object} options       The router options
  * @param  {Object} movieInstance The main movie instance
  * @return {Object}
  */
-window.streetviewanimator.player = function(options, movieInstance) {
+window.streetviewanimator.map = function(options, movieInstance) {
 
     /**
      * Prevent scope issues by using `base` in callbacks instead of `this`
@@ -24,7 +24,6 @@ window.streetviewanimator.player = function(options, movieInstance) {
 
     base.__construct = function() {
         base.log('Constructing');
-        return base;
     };
 
     // --------------------------------------------------------------------------
@@ -42,9 +41,9 @@ window.streetviewanimator.player = function(options, movieInstance) {
          * to the logger, otherwise log the single item.
          */
         if (arguments.length > 1) {
-            movieInstance.debug.log('SVA [Player]:', arguments);
+            movieInstance.debug.log('SVA [Map]:', arguments);
         } else {
-            movieInstance.debug.log('SVA [Player]:', item);
+            movieInstance.debug.log('SVA [Map]:', item);
         }
 
         return base;
