@@ -14,7 +14,7 @@ module.exports = function(grunt) {
       },
       uncompressed: {
         files: {
-          'dist/streetviewanimator.js': ['src/controller.js','src/*.js']
+          'dist/streetviewanimator.js': ['src/main.js','src/*.js']
         },
         options: {
           mangle: false,

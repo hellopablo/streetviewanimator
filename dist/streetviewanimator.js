@@ -1,4 +1,14 @@
 /**
+ * This file simply ensures that the streetviewanimator namespace is properly declared.
+ */
+//  Ensure that the main object is defined
+if (typeof window.streetviewanimator === "undefined") {
+    window.streetviewanimator = {};
+    //  Alias
+    window.SVA = window.streetviewanimator;
+}
+
+/**
  * A clip is a singular series of frames which make up a single part of an animation.
  * Clips are contained within scenes. A scene may contain multiple clips.
  * @param  {Object} options       The clip options
@@ -192,16 +202,6 @@ window.streetviewanimator.loader = function(options, movieInstance) {
     // --------------------------------------------------------------------------
     return base.__construct();
 };
-
-/**
- * This file simply ensures that the streetviewanimator namespace is properly declared.
- */
-//  Ensure that the main object is defined
-if (typeof window.streetviewanimator === "undefined") {
-    window.streetviewanimator = {};
-    //  Alias
-    window.SVA = window.streetviewanimator;
-}
 
 /**
  * This class provides an interface for creating and manipulating map DOM elements
