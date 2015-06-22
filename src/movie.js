@@ -77,9 +77,7 @@ window.streetviewanimator.movie = function(options) {
          * not been defined.
          */
         if (typeof base.options.player.debug === 'undefined') {
-            base.options.player.debug = {
-                'enabled': base.options.debug.enabled
-            };
+            base.options.player.debug = base.options.debug.enabled;
         }
 
         //  Are we turning debugging on?
