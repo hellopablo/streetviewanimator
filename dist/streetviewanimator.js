@@ -72,10 +72,9 @@ window.streetviewanimator.clip = function(name, options, sceneInstance) {
     /**
      * Sends an item to the log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.log = function(item) {
+    base.log = function() {
         $SVA.debug.log("SVA [Clip]:", arguments);
         return base;
     };
@@ -83,10 +82,9 @@ window.streetviewanimator.clip = function(name, options, sceneInstance) {
     /**
      * Sends an item to the error log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.error = function(item) {
+    base.error = function() {
         $SVA.debug.error("SVA [Clip]:", arguments);
         return base;
     };
@@ -158,8 +156,10 @@ window.streetviewanimator.debug = {
             for (var i = methods.length - 1; i >= 0; i--) {
                 if (methods[i] === method && typeof console[methods[i]] === "function") {
                     var args = [ caller ];
-                    for (var x = 0; x < items.length; x++) {
-                        args.push(items[x]);
+                    if (typeof items !== "undefined") {
+                        for (var x = 0; x < items.length; x++) {
+                            args.push(items[x]);
+                        }
                     }
                     console[methods[i]].apply(console, args);
                     break;
@@ -196,10 +196,9 @@ window.streetviewanimator.map = function(options, movieInstance) {
     /**
      * Sends an item to the log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.log = function(item) {
+    base.log = function() {
         $SVA.debug.log("SVA [Map]:", arguments);
         return base;
     };
@@ -207,10 +206,9 @@ window.streetviewanimator.map = function(options, movieInstance) {
     /**
      * Sends an item to the error log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.error = function(item) {
+    base.error = function() {
         $SVA.debug.error("SVA [Map]:", arguments);
         return base;
     };
@@ -329,10 +327,9 @@ window.streetviewanimator.movie = function(options) {
     /**
      * Sends an item to the log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.log = function(item) {
+    base.log = function() {
         $SVA.debug.log("SVA [Movie]:", arguments);
         return base;
     };
@@ -340,10 +337,9 @@ window.streetviewanimator.movie = function(options) {
     /**
      * Sends an item to the error log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.error = function(item) {
+    base.error = function() {
         $SVA.debug.error("SVA [Movie]:", arguments);
         return base;
     };
@@ -379,10 +375,9 @@ window.streetviewanimator.router = function(options, movieInstance) {
     /**
      * Sends an item to the log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.log = function(item) {
+    base.log = function() {
         $SVA.debug.log("SVA [Router]:", arguments);
         return base;
     };
@@ -390,10 +385,9 @@ window.streetviewanimator.router = function(options, movieInstance) {
     /**
      * Sends an item to the error log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.error = function(item) {
+    base.error = function() {
         $SVA.debug.error("SVA [Router]:", arguments);
         return base;
     };
@@ -489,10 +483,9 @@ window.streetviewanimator.scene = function(name, options, movieInstance) {
     /**
      * Sends an item to the log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.log = function(item) {
+    base.log = function() {
         $SVA.debug.log("SVA [Scene]:", arguments);
         return base;
     };
@@ -500,10 +493,9 @@ window.streetviewanimator.scene = function(name, options, movieInstance) {
     /**
      * Sends an item to the error log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.error = function(item) {
+    base.error = function() {
         $SVA.debug.error("SVA [Scene]:", arguments);
         return base;
     };

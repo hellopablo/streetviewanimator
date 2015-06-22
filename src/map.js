@@ -31,10 +31,9 @@ window.streetviewanimator.map = function(options, movieInstance) {
     /**
      * Sends an item to the log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.log = function(item) {
+    base.log = function() {
 
         $SVA.debug.log('SVA [Map]:', arguments);
         return base;
@@ -45,10 +44,9 @@ window.streetviewanimator.map = function(options, movieInstance) {
     /**
      * Sends an item to the error log, prefixing it with a string so that the class
      * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.error = function(item) {
+    base.error = function() {
 
         $SVA.debug.error('SVA [Map]:', arguments);
         return base;
