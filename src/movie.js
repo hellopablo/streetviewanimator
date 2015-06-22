@@ -27,17 +27,11 @@ window.streetviewanimator.movie = function(options) {
      * @type {Object}
      */
     base.options = {
-        'frameRate': 12,
-        'frameWidth': 600,
-        'frameHeight': 300,
         'debug': {
             'enabled': false
         },
         'router': {
             'apiKey': null
-        },
-        'loader': {
-
         },
         'scene': {
             'frameRate': null
@@ -52,6 +46,9 @@ window.streetviewanimator.movie = function(options) {
             'frames': []
         },
         'player': {
+            'frameRate': 12,
+            'frameWidth': 600,
+            'frameHeight': 300,
             'domElement': null,
             'mode': 'background'
         }
@@ -75,15 +72,32 @@ window.streetviewanimator.movie = function(options) {
 
         base.options = $.extend(true, base.options, options);
 
-        //  Setup singletons, debug first (mainly for pretty-logs)
-        base.debug = new $SVA.debug(base.options.debug, base);
+        /**
+         * Pass the global debug parameter into the player options if it's
+         * not been defined.
+         */
+        if (typeof base.options.player.debug === 'undefined') {
+            base.options.player.debug = {
+                'enabled': base.options.debug.enabled
+            };
+        }
+
+        //  Are we turning debugging on?
+        if (base.options.debug.enabled) {
+            $SVA.debug.enabled = true;
+        }
 
         base.log('Constructing');
 
-        //  Now the others
+        //  Setup singletons
         base.router = new $SVA.router(base.options.router, base);
-        base.loader = new $SVA.loader(base.options.loader, base);
-        base.player = new $SVA.player(base.options.player, base);
+
+        //  And finally the player, check it exists first
+        if (typeof window.frameplayer === 'undefined') {
+            base.error('Dependency FramePlayer is not available http://hellopablo.github.io/frameplayer');
+        } else {
+            base.player = new window.frameplayer.player(base.options.player, base);
+        }
 
         // --------------------------------------------------------------------------
 
@@ -127,18 +141,25 @@ window.streetviewanimator.movie = function(options) {
      */
     base.log = function(item) {
 
-        /**
-         * If additional items have been passed then send the `arguments` array
-         * to the logger, otherwise log the single item.
-         */
-        if (arguments.length > 1) {
-            base.debug.log('SVA [Movie]:', arguments);
-        } else {
-            base.debug.log('SVA [Movie]:', item);
-        }
-
+        $SVA.debug.log('SVA [Movie]:', arguments);
         return base;
     };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Sends an item to the error log, prefixing it with a string so that the class
+     * making the log is easily identifiable
+     * @param  {Mixed} item The item to log
+     * @return {Object}
+     */
+    base.error = function(item) {
+
+        $SVA.debug.error('SVA [Movie]:', arguments);
+        return base;
+    };
+
+    // --------------------------------------------------------------------------
 
     return base.__construct();
 };

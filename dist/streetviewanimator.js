@@ -76,15 +76,18 @@ window.streetviewanimator.clip = function(name, options, sceneInstance) {
      * @return {Object}
      */
     base.log = function(item) {
-        /**
-         * If additional items have been passed then send the `arguments` array
-         * to the logger, otherwise log the single item.
-         */
-        if (arguments.length > 1) {
-            base.scene.movie.debug.log("SVA [Clip " + base.scene.name + ":" + base.name + "]:", arguments);
-        } else {
-            base.scene.movie.debug.log("SVA [Clip " + base.scene.name + ":" + base.name + "]:", item);
-        }
+        $SVA.debug.log("SVA [Clip]:", arguments);
+        return base;
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Sends an item to the error log, prefixing it with a string so that the class
+     * making the log is easily identifiable
+     * @param  {Mixed} item The item to log
+     * @return {Object}
+     */
+    base.error = function(item) {
+        $SVA.debug.error("SVA [Clip]:", arguments);
         return base;
     };
     // --------------------------------------------------------------------------
@@ -93,114 +96,78 @@ window.streetviewanimator.clip = function(name, options, sceneInstance) {
 
 /**
  * This class provides debugging functionality to StreetView Animator
- * @param  {Object} options       The debug options
- * @param  {Object} movieInstance The main movie instance
  * @return {Object}
  */
-window.streetviewanimator.debug = function(options, movieInstance) {
+window.streetviewanimator.debug = {
     /**
-     * Prevent scope issues by using `base` in callbacks instead of `this`
-     * @type {Object}
+     * Whether debugging is enabled or not
+     * @type {Boolean}
      */
-    var base = this;
+    enabled: false,
     // --------------------------------------------------------------------------
     /**
-     * Alias to main namespace
-     * @type {Object}
-     */
-    var $SVA = window.streetviewanimator;
-    // --------------------------------------------------------------------------
-    base.enabled = false;
-    base.treatAsIE8 = false;
-    base.slice = Array.prototype.slice;
-    //see http://patik.com/blog/complete-cross-browser-console-log/
-    // Tell IE9 to use its built-in console
-    if (Function.prototype.bind && (typeof console === "object" || typeof console === "function") && typeof console.log == "object") {
-        try {
-            [ "log", "info", "warn", "error", "assert", "dir", "clear", "profile", "profileEnd" ].forEach(function(method) {
-                console[method] = this.call(console[method], console);
-            }, Function.prototype.bind);
-        } catch (ex) {
-            base.treatAsIE8 = true;
-        }
-    }
-    // --------------------------------------------------------------------------
-    base.__construct = function() {
-        base.enabled = options.enabled ? true : false;
-        return base;
-    };
-    // --------------------------------------------------------------------------
-    base.log = function(caller, items) {
-        if (base.enabled) {
-            try {
-                // Modern browsers
-                if (typeof console != "undefined" && typeof console.log == "function") {
-                    // Opera 11
-                    if (window.opera) {
-                        var i = 0;
-                        while (i < arguments.length) {
-                            console.log("Item " + (i + 1) + ": " + arguments[i]);
-                            i++;
-                        }
-                    } else if (base.slice.call(arguments).length == 1 && typeof base.slice.call(arguments)[0] == "string") {
-                        console.log(slice.call(arguments).toString());
-                    } else {
-                        console.log.apply(console, base.slice.call(arguments));
-                    }
-                } else if ((!Function.prototype.bind || base.treatAsIE8) && typeof console != "undefined" && typeof console.log == "object") {
-                    Function.prototype.call.call(console.log, console, slice.call(arguments));
-                }
-            } catch (ignore) {}
-        }
-    };
-    // --------------------------------------------------------------------------
-    return base.__construct();
-};
-
-/**
- * This class provides an interface for loading clips, sequences and frames.
- * @param  {Object} options       The loader options
- * @param  {Object} movieInstance The main movie instance
- * @return {Object}
- */
-window.streetviewanimator.loader = function(options, movieInstance) {
-    /**
-     * Prevent scope issues by using `base` in callbacks instead of `this`
-     * @type {Object}
-     */
-    var base = this;
-    // --------------------------------------------------------------------------
-    /**
-     * Alias to main namespace
-     * @type {Object}
-     */
-    var $SVA = window.streetviewanimator;
-    // --------------------------------------------------------------------------
-    base.__construct = function() {
-        base.log("Constructing");
-        return base;
-    };
-    // --------------------------------------------------------------------------
-    /**
-     * Sends an item to the log, prefixing it with a string so that the class
-     * making the log is easily identifiable
-     * @param  {Mixed} item The item to log
+     * Renders a `log` call to the console
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
      * @return {Object}
      */
-    base.log = function(item) {
-        /**
-         * If additional items have been passed then send the `arguments` array
-         * to the logger, otherwise log the single item.
-         */
-        if (arguments.length > 1) {
-            movieInstance.debug.log("SVA [Loader]:", arguments);
-        } else {
-            movieInstance.debug.log("SVA [Loader]:", item);
-        }
-        return base;
-    };
+    log: function(caller, items) {
+        return this.execConsoleFunc("log", caller, items);
+    },
     // --------------------------------------------------------------------------
-    return base.__construct();
+    /**
+     * Renders an `info` call to the console
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
+     * @return {Object}
+     */
+    info: function(caller, items) {
+        return this.execConsoleFunc("info", caller, items);
+    },
+    // --------------------------------------------------------------------------
+    /**
+     * Renders a `warn` call to the console
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
+     * @return {Object}
+     */
+    warn: function(caller, items) {
+        return this.execConsoleFunc("warn", caller, items);
+    },
+    // --------------------------------------------------------------------------
+    /**
+     * Renders an `error` call to the console
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
+     * @return {Object}
+     */
+    error: function(caller, items) {
+        return this.execConsoleFunc("error", caller, items);
+    },
+    // --------------------------------------------------------------------------
+    /**
+     * Prepares the arguments and executes the console method
+     * @param  {String} method The console method to call
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
+     * @return {Object}
+     */
+    execConsoleFunc: function(method, caller, items) {
+        if (this.enabled && typeof console !== "undefined") {
+            var methods = [ "log", "info", "warn", "error" ];
+            for (var i = methods.length - 1; i >= 0; i--) {
+                if (methods[i] === method && typeof console[methods[i]] === "function") {
+                    var args = [ caller ];
+                    for (var x = 0; x < items.length; x++) {
+                        args.push(items[x]);
+                    }
+                    console[methods[i]].apply(console, args);
+                    break;
+                }
+            }
+        }
+        return this;
+    }
 };
 
 /**
@@ -233,15 +200,18 @@ window.streetviewanimator.map = function(options, movieInstance) {
      * @return {Object}
      */
     base.log = function(item) {
-        /**
-         * If additional items have been passed then send the `arguments` array
-         * to the logger, otherwise log the single item.
-         */
-        if (arguments.length > 1) {
-            movieInstance.debug.log("SVA [Map]:", arguments);
-        } else {
-            movieInstance.debug.log("SVA [Map]:", item);
-        }
+        $SVA.debug.log("SVA [Map]:", arguments);
+        return base;
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Sends an item to the error log, prefixing it with a string so that the class
+     * making the log is easily identifiable
+     * @param  {Mixed} item The item to log
+     * @return {Object}
+     */
+    base.error = function(item) {
+        $SVA.debug.error("SVA [Map]:", arguments);
         return base;
     };
     // --------------------------------------------------------------------------
@@ -272,16 +242,12 @@ window.streetviewanimator.movie = function(options) {
      * @type {Object}
      */
     base.options = {
-        frameRate: 12,
-        frameWidth: 600,
-        frameHeight: 300,
         debug: {
             enabled: false
         },
         router: {
             apiKey: null
         },
-        loader: {},
         scene: {
             frameRate: null
         },
@@ -295,6 +261,9 @@ window.streetviewanimator.movie = function(options) {
             frames: []
         },
         player: {
+            frameRate: 12,
+            frameWidth: 600,
+            frameHeight: 300,
             domElement: null,
             mode: "background"
         }
@@ -312,13 +281,28 @@ window.streetviewanimator.movie = function(options) {
      */
     base.__construct = function() {
         base.options = $.extend(true, base.options, options);
-        //  Setup singletons, debug first (mainly for pretty-logs)
-        base.debug = new $SVA.debug(base.options.debug, base);
+        /**
+         * Pass the global debug parameter into the player options if it's
+         * not been defined.
+         */
+        if (typeof base.options.player.debug === "undefined") {
+            base.options.player.debug = {
+                enabled: base.options.debug.enabled
+            };
+        }
+        //  Are we turning debugging on?
+        if (base.options.debug.enabled) {
+            $SVA.debug.enabled = true;
+        }
         base.log("Constructing");
-        //  Now the others
+        //  Setup singletons
         base.router = new $SVA.router(base.options.router, base);
-        base.loader = new $SVA.loader(base.options.loader, base);
-        base.player = new $SVA.player(base.options.player, base);
+        //  And finally the player, check it exists first
+        if (typeof window.frameplayer === "undefined") {
+            base.error("Dependency FramePlayer is not available http://hellopablo.github.io/frameplayer");
+        } else {
+            base.player = new window.frameplayer.player(base.options.player, base);
+        }
         // --------------------------------------------------------------------------
         return base;
     };
@@ -349,60 +333,18 @@ window.streetviewanimator.movie = function(options) {
      * @return {Object}
      */
     base.log = function(item) {
-        /**
-         * If additional items have been passed then send the `arguments` array
-         * to the logger, otherwise log the single item.
-         */
-        if (arguments.length > 1) {
-            base.debug.log("SVA [Movie]:", arguments);
-        } else {
-            base.debug.log("SVA [Movie]:", item);
-        }
-        return base;
-    };
-    return base.__construct();
-};
-
-/**
- * This class provides an interface for playing streetview animator animations.
- * @param  {Object} options       The player options
- * @param  {Object} movieInstance The main movie instance
- * @return {Object}
- */
-window.streetviewanimator.player = function(options, movieInstance) {
-    /**
-     * Prevent scope issues by using `base` in callbacks instead of `this`
-     * @type {Object}
-     */
-    var base = this;
-    // --------------------------------------------------------------------------
-    /**
-     * Alias to main namespace
-     * @type {Object}
-     */
-    var $SVA = window.streetviewanimator;
-    // --------------------------------------------------------------------------
-    base.__construct = function() {
-        base.log("Constructing");
+        $SVA.debug.log("SVA [Movie]:", arguments);
         return base;
     };
     // --------------------------------------------------------------------------
     /**
-     * Sends an item to the log, prefixing it with a string so that the class
+     * Sends an item to the error log, prefixing it with a string so that the class
      * making the log is easily identifiable
      * @param  {Mixed} item The item to log
      * @return {Object}
      */
-    base.log = function(item) {
-        /**
-         * If additional items have been passed then send the `arguments` array
-         * to the logger, otherwise log the single item.
-         */
-        if (arguments.length > 1) {
-            movieInstance.debug.log("SVA [Player]:", arguments);
-        } else {
-            movieInstance.debug.log("SVA [Player]:", item);
-        }
+    base.error = function(item) {
+        $SVA.debug.error("SVA [Movie]:", arguments);
         return base;
     };
     // --------------------------------------------------------------------------
@@ -441,15 +383,18 @@ window.streetviewanimator.router = function(options, movieInstance) {
      * @return {Object}
      */
     base.log = function(item) {
-        /**
-         * If additional items have been passed then send the `arguments` array
-         * to the logger, otherwise log the single item.
-         */
-        if (arguments.length > 1) {
-            movieInstance.debug.log("SVA [Router]:", arguments);
-        } else {
-            movieInstance.debug.log("SVA [Router]:", item);
-        }
+        $SVA.debug.log("SVA [Router]:", arguments);
+        return base;
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Sends an item to the error log, prefixing it with a string so that the class
+     * making the log is easily identifiable
+     * @param  {Mixed} item The item to log
+     * @return {Object}
+     */
+    base.error = function(item) {
+        $SVA.debug.error("SVA [Router]:", arguments);
         return base;
     };
     // --------------------------------------------------------------------------
@@ -548,15 +493,18 @@ window.streetviewanimator.scene = function(name, options, movieInstance) {
      * @return {Object}
      */
     base.log = function(item) {
-        /**
-         * If additional items have been passed then send the `arguments` array
-         * to the logger, otherwise log the single item.
-         */
-        if (arguments.length > 1) {
-            base.movie.debug.log("SVA [Scene: " + base.name + "]:", arguments);
-        } else {
-            base.movie.debug.log("SVA [Scene: " + base.name + "]:", item);
-        }
+        $SVA.debug.log("SVA [Scene]:", arguments);
+        return base;
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Sends an item to the error log, prefixing it with a string so that the class
+     * making the log is easily identifiable
+     * @param  {Mixed} item The item to log
+     * @return {Object}
+     */
+    base.error = function(item) {
+        $SVA.debug.error("SVA [Scene]:", arguments);
         return base;
     };
     // --------------------------------------------------------------------------

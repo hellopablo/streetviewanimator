@@ -120,16 +120,21 @@ window.streetviewanimator.scene = function(name, options, movieInstance) {
      */
     base.log = function(item) {
 
-        /**
-         * If additional items have been passed then send the `arguments` array
-         * to the logger, otherwise log the single item.
-         */
-        if (arguments.length > 1) {
-            base.movie.debug.log('SVA [Scene: ' + base.name + ']:', arguments);
-        } else {
-            base.movie.debug.log('SVA [Scene: ' + base.name + ']:', item);
-        }
+        $SVA.debug.log('SVA [Scene]:', arguments);
+        return base;
+    };
 
+    // --------------------------------------------------------------------------
+
+    /**
+     * Sends an item to the error log, prefixing it with a string so that the class
+     * making the log is easily identifiable
+     * @param  {Mixed} item The item to log
+     * @return {Object}
+     */
+    base.error = function(item) {
+
+        $SVA.debug.error('SVA [Scene]:', arguments);
         return base;
     };
 

@@ -1,85 +1,90 @@
 /**
  * This class provides debugging functionality to StreetView Animator
- * @param  {Object} options       The debug options
- * @param  {Object} movieInstance The main movie instance
  * @return {Object}
  */
-window.streetviewanimator.debug = function(options, movieInstance) {
+window.streetviewanimator.debug = {
 
     /**
-     * Prevent scope issues by using `base` in callbacks instead of `this`
-     * @type {Object}
+     * Whether debugging is enabled or not
+     * @type {Boolean}
      */
-    var base = this;
+    'enabled': false,
 
     // --------------------------------------------------------------------------
 
     /**
-     * Alias to main namespace
-     * @type {Object}
+     * Renders a `log` call to the console
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
+     * @return {Object}
      */
-    var $SVA = window.streetviewanimator;
+    'log': function(caller, items) {
+        return this.execConsoleFunc('log', caller, items);
+    },
 
     // --------------------------------------------------------------------------
 
-    base.enabled = false;
-    base.treatAsIE8 = false;
-    base.slice = Array.prototype.slice;
+    /**
+     * Renders an `info` call to the console
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
+     * @return {Object}
+     */
+    'info': function(caller, items) {
+        return this.execConsoleFunc('info', caller, items);
+    },
 
-    //see http://patik.com/blog/complete-cross-browser-console-log/
-    // Tell IE9 to use its built-in console
-    if (Function.prototype.bind && (typeof console === 'object' || typeof console === 'function') && typeof console.log == 'object') {
-        try {
-            ['log', 'info', 'warn', 'error', 'assert', 'dir', 'clear', 'profile', 'profileEnd']
-                .forEach(function(method) {
-                    console[method] = this.call(console[method], console);
-                }, Function.prototype.bind);
-        } catch (ex) {
-            base.treatAsIE8 = true;
+    // --------------------------------------------------------------------------
+
+    /**
+     * Renders a `warn` call to the console
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
+     * @return {Object}
+     */
+    'warn': function(caller, items) {
+        return this.execConsoleFunc('warn', caller, items);
+    },
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Renders an `error` call to the console
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
+     * @return {Object}
+     */
+    'error': function(caller, items) {
+        return this.execConsoleFunc('error', caller, items);
+    },
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Prepares the arguments and executes the console method
+     * @param  {String} method The console method to call
+     * @param  {String} caller The calling class
+     * @param  {Mixed}  items  The item(s) to log
+     * @return {Object}
+     */
+    'execConsoleFunc': function(method, caller, items) {
+
+        if (this.enabled && typeof console !== 'undefined') {
+
+            var methods = ['log', 'info', 'warn', 'error'];
+
+            for (var i = methods.length - 1; i >= 0; i--) {
+                if (methods[i] === method && typeof console[methods[i]] === 'function') {
+                    var args = [caller];
+                    for (var x = 0; x < items.length; x++) {
+                        args.push(items[x]);
+                    }
+                    console[methods[i]].apply(console, args);
+                    break;
+                }
+            }
         }
+
+        return this;
     }
-
-    // --------------------------------------------------------------------------
-
-    base.__construct = function() {
-        base.enabled = options.enabled ? true : false;
-        return base;
-    };
-
-    // --------------------------------------------------------------------------
-
-    base.log = function(caller, items) {
-
-        if (base.enabled) {
-            try {
-                // Modern browsers
-                if (typeof console != 'undefined' && typeof console.log == 'function') {
-                    // Opera 11
-                    if (window.opera) {
-                        var i = 0;
-                        while (i < arguments.length) {
-                            console.log('Item ' + (i + 1) + ': ' + arguments[i]);
-                            i++;
-                        }
-                    }
-                    // All other modern browsers
-                    else if ((base.slice.call(arguments)).length == 1 && typeof base.slice.call(arguments)[0] == 'string') {
-                        console.log((slice.call(arguments)).toString());
-                    } else {
-                        console.log.apply(console, base.slice.call(arguments));
-                    }
-                }
-                // IE8
-                else if ((!Function.prototype.bind || base.treatAsIE8) && typeof console != 'undefined' && typeof console.log == 'object') {
-                    Function.prototype.call.call(console.log, console, slice.call(arguments));
-                }
-
-                // IE7 and lower, and other old browsers
-            } catch (ignore) {}
-        }
-    };
-
-    // --------------------------------------------------------------------------
-
-    return base.__construct();
 };
