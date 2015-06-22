@@ -1,6 +1,6 @@
 {
   "name": "streetviewanimator",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "authors": [
     "Pablo de la Peña <p@shedcollective.org>"
   ],
@@ -15,6 +15,7 @@
   ],
   "dependencies": {
     "jquery": "2.*",
+    "frameplayer": "~0.1.1"
   },
   "homepage": "hellopablo.github.io/streetviewanimator"
 }

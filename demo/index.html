@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>StreetView Animator: Demo</title>
+    <link rel="shortcut icon" href="assets/img/icon.png">
+    <style type="text/css">
+        /* http://meyerweb.com/eric/tools/css/reset/
+           v2.0 | 20110126
+           License: none (public domain)
+        */
+
+        html, body, div, span, applet, object, iframe,
+        h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+        a, abbr, acronym, address, big, cite, code,
+        del, dfn, em, img, ins, kbd, q, s, samp,
+        small, strike, strong, sub, sup, tt, var,
+        b, u, i, center,
+        dl, dt, dd, ol, ul, li,
+        fieldset, form, label, legend,
+        table, caption, tbody, tfoot, thead, tr, th, td,
+        article, aside, canvas, details, embed,
+        figure, figcaption, footer, header, hgroup,
+        menu, nav, output, ruby, section, summary,
+        time, mark, audio, video {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            font-size: 100%;
+            font: inherit;
+            vertical-align: baseline;
+        }
+        /* HTML5 display-role reset for older browsers */
+        article, aside, details, figcaption, figure,
+        footer, header, hgroup, menu, nav, section {
+            display: block;
+        }
+        body {
+            line-height: 1;
+        }
+        ol, ul {
+            list-style: none;
+        }
+        blockquote, q {
+            quotes: none;
+        }
+        blockquote:before, blockquote:after,
+        q:before, q:after {
+            content: '';
+            content: none;
+        }
+        table {
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
+
+        /*
+            Page styles
+         */
+        html,
+        body {
+            font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+            font-weight: 300;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            margin: 0;
+            padding: 0;
+        }
+        #intro,
+        #player,
+        #controls-movie,
+        #controls-player,
+        #meta,
+        #global-config,
+        #scenes {
+            border:1px solid #CCC;
+            margin: 1em auto;
+            width: 580px;
+            padding: 10px;
+        }
+        #meta > p,
+        #global-config > p
+        {
+            padding-left: 0.25em;
+            padding-bottom: 0.8em;
+            font-size: 0.8em;
+            font-weight: bold;
+            border-bottom: 1px solid #EFEFEF;
+        }
+        #intro {
+            text-align: center;
+            border: none;
+            font-size: 2em;
+            font-weight: bold;
+        }
+        #intro img {
+            width: 50px;
+            height: 50px;
+            vertical-align: middle;
+            position: relative;
+            top:-3px;
+            left:-10px;
+        }
+        #intro small {
+            font-weight: normal;
+            color: #CCC;
+        }
+        #player {
+            width: 600px;
+            height: 338px;
+            padding: 0;
+            position: relative;
+            border-radius: 3px;
+            overflow: hidden;
+            box-shadow: 0px 0px 5px rgba(0,0,0,0.3);
+        }
+        #player .canvas {
+            width: 100%;
+            height:100%;
+            background: #FFF2D1;
+            background-image: url(assets/img/coverImg.png);
+            background-size: cover;
+            cursor: pointer;
+        }
+        #player .scrubber {
+            position: absolute;
+            left: 1em;
+            right: 1em;
+            bottom: 0.8em;
+            height: 0.5em;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid #FFF;
+            border-radius: 0.15em;
+            overflow: hidden;
+            box-shadow: 0px 1px 2px rgba(0,0,0,0.3);
+        }
+        #player .scrubber .loaded,
+        #player .scrubber .current {
+            height: 100%;
+            width: 0;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        #player .scrubber .loaded {
+            background: rgba(255, 255, 255, 0.65);
+        }
+        #player .scrubber .current {
+            background: rgba(255, 255, 255, 1);
+        }
+        #controls-movie span,
+        #controls-player span {
+            float: left;
+            color: #888;
+            display: block;
+            width: 50px;
+        }
+        table {
+            width: 100%;
+        }
+        table td {
+            padding: 1em;
+            border-bottom: 1px solid #EFEFEF;
+        }
+        table tr:last-of-type td {
+            border-bottom: none;
+        }
+        table td.label {
+            width: 150px;
+            background: #EFEFEF;
+        }
+        table td.input {
+            padding: 0.5em;
+        }
+        table td.input input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.25em;
+        }
+        #scenes li {
+
+            border: 1px dashed #CCC;
+            padding: 1em;
+            margin-bottom: 1em;
+        }
+        #scenes li label {
+            margin-right: 1em;
+        }
+        #scenes li button {
+            float: right;
+        }
+        #scenes li p {
+            padding-bottom: 1em;
+        }
+        #scenes li small {
+            font-size: 0.75em;
+        }
+        #scenes li .auto,
+        #scenes li .manual {
+            display: none;
+        }
+        #scenes li .auto label {
+            border: 1px solid #CCC;
+            box-sizing: border-box;
+            margin-right: 0px;
+            width: 49%;
+            padding: 0.5em;
+            display: inline-block;
+            position: relative;
+        }
+        #scenes li .auto p:last-of-type {
+            padding-bottom: 0;
+        }
+        #scenes li .auto label:last-of-type {
+            float: right;
+        }
+        #scenes li .auto label:first-of-type {
+            float: none;
+        }
+        #scenes li .auto label input {
+            position: absolute;
+            width: 100%;
+            left: 0;
+            top: 0;
+            box-sizing: border-box;
+            height: 100%;
+            background: transparent;
+            padding-left: 100px;
+            padding-right: 1em;
+            border: 0;
+            text-align: right;
+        }
+        #scenes li .manual textarea {
+            width: 100%;
+            height: 150px;
+            box-sizing: border-box;
+            padding: 1em;
+            border: 1px solid #CCC;
+        }
+        #scenes li.add-scene {
+            border: none;
+            padding: 0;
+            margin-bottom: 0;
+        }
+        #scenes li.add-scene button {
+            width: 100%;
+            float: none;
+        }
+        button.disabled {
+            opacity: 0.25;
+        }
+    </style>
+</head>
+<body>
+    <div id="intro">
+        <img src="assets/img/icon.png">
+        StreetView Animator <small>Demo</small>
+    </div>
+    <div id="player">
+        <div class="canvas"></div>
+        <div class="controls"></div>
+        <div class="scrubber">
+            <div class="loaded"></div>
+            <div class="current"></div>
+        </div>
+    </div>
+    <div id="controls-movie">
+        <span>Movie:</span>
+        <button class="action" data-action="generate">
+            Generate Movie
+        </button>
+        <button class="action" data-action="import">
+            Import Movie
+        </button>
+        <button class="action disabled" data-action="export-movie">
+            Export Movie
+        </button>
+        <button class="action disabled" data-action="export-frames">
+            Export Frames
+        </button>
+    </div>
+    <div id="controls-player">
+        <span>Player:</span>
+        <button class="action disabled" data-action="load">
+            Load Start
+        </button>
+        <button class="action disabled" data-action="loadStop">
+            Load Stop
+        </button>
+        <button class="action disabled" data-action="play">
+            Player Play
+        </button>
+        <button class="action disabled" data-action="stop">
+            Player Stop
+        </button>
+    </div>
+    <div id="meta">
+        <p>
+            Meta
+        </p>
+        <table>
+            <tbody>
+                <tr>
+                    <td class="label">Number of Scenes</td>
+                    <td class="value" id="meta-num-scenes">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Number of Frames</td>
+                    <td class="value" id="meta-num-frames">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Current Frame</td>
+                    <td class="value" id="meta-current-frame">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Loaded Frames</td>
+                    <td class="value" id="meta-loaded-frames">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Player state</td>
+                    <td class="value" id="meta-player-state">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Loader state</td>
+                    <td class="value" id="meta-loader-state">
+                        undefined
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="global-config">
+        <p>
+            Global Settings
+        </p>
+        <table>
+            <tbody>
+                <tr>
+                    <td class="label">Frame Width</td>
+                    <td class="input">
+                        <input type="text" id="param-frame-width" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Frame Height</td>
+                    <td class="input">
+                        <input type="text" id="param-frame-height" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Frame Rate</td>
+                    <td class="input">
+                        <input type="text" id="param-frame-rate" />
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="scenes">
+        <ul>
+            <li class="add-scene">
+                <button class="action" data-action="add-scene">
+                    Add Scene
+                </a>
+            </li>
+        </ul>
+    </div>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.1.2/mustache.min.js"></script>
+    <script type="text/javascript" src="../bower_components/frameplayer/dist/frameplayer.min.js"></script>
+    <script type="text/javascript" src="../dist/streetviewanimator.min.js"></script>
+    <script type="text/javascript" src="assets/js/scenes.js"></script>
+    <script type="text/x-template" id="template-add-scene">
+        <li>
+            <p>
+                Type:
+                <label>
+                    <input type="radio" class="param-type" value="AUTO" {{#isAuto}}checked="checked"{{/isAuto}} />
+                    Auto
+                </label>
+                <label>
+                    <input type="radio" class="param-type" value="MANUAL" {{#isManual}}checked="checked"{{/isManual}}/>
+                    Manual
+                    <small>
+                        (Generated using <a href="http://hellopablo.github.io/streetviewplotter">StreetView Plotter</a>)
+                    </small>
+                </label>
+                <button class="action" data-action="remove-scene">
+                    Remove
+                </button>
+            </p>
+
+            <div class="auto" {{#isAuto}}style="display: block"{{/isAuto}}>
+                <p>
+                    <label>
+                        Start:
+                        <input class="param-start" type="text" value="{{start}}" />
+                    </label>
+                    <label>
+                        End:
+                        <input class="param-end" type="text" value="{{end}}" />
+                    </label>
+                </p>
+                <p>
+                    <label>
+                        Target Lat:
+                        <input class="param-target-lat" type="text" value="{{target.lat}}" placeholder="Optional" />
+                    </label>
+                    <label>
+                        Target Lng:
+                        <input class="param-target-lng" type="text" value="{{target.lng}}" placeholder="Optional" />
+                    </label>
+                </p>
+                <p>
+                    <label>
+                        Pitch:
+                        <input class="param-pitch" type="text" value="{{pitch}}" placeholder="Optional" />
+                    </label>
+                    <label>
+                        FOV:
+                        <input class="param-fov" type="text" value="{{fov}}" placeholder="Optional" />
+                    </label>
+                </p>
+                <p>
+                    <label>
+                        Duration:
+                        <input class="param-duration" type="text" value="{{duration}}" placeholder="Optional" />
+                    </label>
+                </p>
+            </div>
+
+            <div class="manual" {{#isManual}}style="display: block"{{/isManual}}>
+                <textarea placeholder="Paste a manual config object here" class="param-manual">{{framesAsJson}}</textarea>
+            </div>
+        </li>
+    </script>
+    <script type="text/javascript">
+
+        var sva = new window.streetviewanimator.movie({
+
+        });
+
+        //  Bind to buttons
+        $(document).on('click', 'button.action', function() {
+
+            var action = $(this).data('action');
+            if (!$(this).hasClass('disabled')) {
+
+                switch (action) {
+
+                    case 'generate':
+                        console.log('@todo: generate');
+                        break;
+
+                    case 'export':
+                        console.log('@todo: export');
+                        break;
+
+                    case 'add-scene':
+
+                        var html = $('#template-add-scene').html();
+                        $('#scenes').find('li.add-scene').before(html);
+                        break;
+
+                    case 'remove-scene':
+
+                        $(this).closest('li').remove();
+                        break;
+
+                }
+            }
+        });
+
+        //  Bind to scene type selector
+        $('#scenes').on('click', 'input.param-type', function(e) {
+
+            $(this).closest('p').find('.param-type').prop('checked', false);
+            $(this).prop('checked', true);
+
+            if ($(this).val() === 'AUTO') {
+
+                $(this).closest('li').find('.auto').show();
+                $(this).closest('li').find('.manual').hide();
+
+            } else {
+
+                $(this).closest('li').find('.auto').hide();
+                $(this).closest('li').find('.manual').show();
+            }
+        });
+
+        //  Build the interface from the demo scenes
+        $('#param-frame-width').val(window.demoScenes.frameWidth);
+        $('#param-frame-height').val(window.demoScenes.frameHeight);
+        $('#param-frame-rate').val(window.demoScenes.frameRate);
+        var tplAddScene = $('#template-add-scene').html();
+        $(window.demoScenes.scenes).each(function(index, element) {
+
+            var tplData = element;
+
+            tplData.isAuto = tplData.type === "AUTO";
+            tplData.isManual = tplData.type === "MANUAL";
+            tplData.framesAsJson = tplData.frames.length ? JSON.stringify(tplData.frames, null, "\t") : null;
+
+            var tpl = Mustache.render(tplAddScene, tplData);
+
+            $('#scenes li.add-scene').before(tpl);
+
+        });
+
+    </script>
+</body>
+</html>
