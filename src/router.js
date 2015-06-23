@@ -22,12 +22,27 @@ window.streetviewanimator.router = function(options, movieInstance) {
 
     // --------------------------------------------------------------------------
 
+    /**
+     * The API key to use when communicating with Google
+     * @type {String}
+     */
     base.apiKey = options.apiKey;
 
     // --------------------------------------------------------------------------
 
     base.__construct = function() {
         base.log('Constructing');
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Set the API key to sue when communicating with Google
+     * @param {String} apiKey The API key to sue
+     */
+    base.setApiKey = function(apiKey) {
+        base.apiKey = apiKey;
+        return base;
     };
 
     // --------------------------------------------------------------------------
