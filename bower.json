@@ -1,0 +1,21 @@
+{
+  "name": "streetviewanimator",
+  "version": "1.0.0",
+  "authors": [
+    "Pablo de la Peña <p@shedcollective.org>"
+  ],
+  "description": "A simple tool for easily creating Google Street View frame based animations.",
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "2.*",
+    "frameplayer": "~0.1.1"
+  },
+  "homepage": "hellopablo.github.io/streetviewanimator"
+}
