@@ -32,10 +32,10 @@ window.streetviewanimator.movie = function(options) {
         'router': {
             'apiKey': null
         },
+        'frameWidth': 600,
+        'frameHeight': 338,
         'player': {
             'frameRate': 12,
-            'frameWidth': 600,
-            'frameHeight': 338,
             'domElement': null,
             'mode': 'background'
         },
@@ -48,6 +48,7 @@ window.streetviewanimator.movie = function(options) {
         'onSceneDestroy': function() {},
         'onGenerateStart': function() {},
         'onGenerateEnd': function() {},
+        'onReset': function() {},
 
         //  Player Events
         'onPlayerReady': function(player) {},
@@ -62,7 +63,11 @@ window.streetviewanimator.movie = function(options) {
         'onPlayerEnterFrame': function(player, currentFrame) {},
         'onPlayerExitFrame': function(player, currentFrame) {},
         'onPlayerLoop': function(player) {},
-        'onPlayerReset': function(player) {}
+        'onPlayerReset': function(player) {},
+
+        //  Custom player events
+        'onPlayerEnterScene': function(player, scene) {},
+        'onPlayerExitScene': function(player, scene) {}
     };
 
     // --------------------------------------------------------------------------
@@ -72,6 +77,22 @@ window.streetviewanimator.movie = function(options) {
      * @type {Object}
      */
     base.scenes = {};
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * An array of scene's first frames
+     * @type {Object}
+     */
+    base.sceneStartFrames = {};
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * An array of scene's first frames
+     * @type {Object}
+     */
+    base.sceneStopFrames = {};
 
     // --------------------------------------------------------------------------
 
@@ -88,6 +109,22 @@ window.streetviewanimator.movie = function(options) {
      * @type {Boolean}
      */
     base.isGenerating = false;
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Holds the router instance
+     * @type {Object}
+     */
+    base.router = null;
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Holds the player instance
+     * @type {Object}
+     */
+    base.player = null;
 
     // --------------------------------------------------------------------------
 
@@ -109,6 +146,9 @@ window.streetviewanimator.movie = function(options) {
         }
 
         base.log('Constructing');
+
+        //  Reset everything
+        base.doReset();
 
         //  Setup singletons
         base.router = new $SVA.router(base.options.router, base);
@@ -148,10 +188,12 @@ window.streetviewanimator.movie = function(options) {
                 base.options.onPlayerStop.call(this);
             };
             base.options.player.onEnterFrame = function(currentFrame) {
-                base.options.onPlayerEnterFrame.call(this, currentFrame);
+                base.playerEnterFrame.call(base, currentFrame);
+                base.options.onPlayerEnterFrame.call(this);
             };
             base.options.player.onExitFrame = function(currentFrame) {
-                base.options.onPlayerExitFrame.call(this, currentFrame);
+                base.playerExitFrame.call(base, currentFrame);
+                base.options.onPlayerExitFrame.call(this);
             };
             base.options.player.onLoop = function() {
                 base.options.onPlayerLoop.call(this);
@@ -250,8 +292,6 @@ window.streetviewanimator.movie = function(options) {
         for (var key in base.scenes) {
 
             sceneNumFrames = base.scenes[key].getNumFrames();
-
-            base.log('Scene [' + key + '] has ' + sceneNumFrames + ' frames');
             numFrames += sceneNumFrames;
         }
 
@@ -276,6 +316,11 @@ window.streetviewanimator.movie = function(options) {
 
             base.log('Beginning scene generation');
             base.isGenerating = true;
+
+            //  Update the player element so some visual feedback can be given easily
+            base.player.element.addClass('generating');
+
+            //  Fire the `onGenerateStart` event
             base.options.onGenerateStart.call(base);
         }
 
@@ -283,22 +328,34 @@ window.streetviewanimator.movie = function(options) {
 
         if (!base.requiresGeneration()) {
 
+            base.log('Movie is already generated');
+
+            //  Reset local variables
             base.isGenerating = false;
             base.generated = true;
-            base.log('Movie is already generated');
+
+            //  Resolve the promise
             deferred.resolve(deferred);
 
         } else {
 
-            //  Process each scene, once they are all processed resolve the promise
+            //  Process each scene
             base.doGenerate(deferred);
         }
 
         //  Fired when generation is complete
         deferred.done(function() {
+
+            base.log('Completed movie generation');
+
+            //  Reset local variables
             base.isGenerating = false;
             base.generated = true;
-            base.log('Completed movie generation');
+
+            //  Update the player element so some visual feedback can be given easily
+            base.player.element.removeClass('generating');
+
+            //  Fire the `onGenerateEnd` event
             base.options.onGenerateEnd.call(base);
         });
 
@@ -307,31 +364,48 @@ window.streetviewanimator.movie = function(options) {
 
     // --------------------------------------------------------------------------
 
+    /**
+     * The callback function which generates each scene
+     * @param  {Object} deferred The deferred object to resolve
+     * @return {Void}
+     */
     base.doGenerate = function(deferred) {
 
-        //  Find a scene which has not been generated
-        var scene;
-        for (var key in base.scenes) {
-            if (base.scenes[key].requiresGeneration()) {
-                scene = base.scenes[key];
-                break;
-            }
-        }
+        if (!base.getNumScenes()) {
 
-        if (scene) {
-
-            scene.generate()
-            .done(function() {
-
-                //  Generation of this scene complete, try again
-                base.doGenerate(deferred);
-            });
+            base.warn('No scenes are present in the movie');
+            deferred.resolve();
 
         } else {
 
-            //  No scenes to generate
-            base.log('No scenes require generation');
-            deferred.resolve();
+            //  Find a scene which has not been generated
+            var scene;
+            for (var key in base.scenes) {
+                if (base.scenes[key].requiresGeneration()) {
+                    scene = base.scenes[key];
+                    break;
+                }
+            }
+
+            if (scene) {
+
+                scene.generate()
+                .fail(function(data) {
+
+                    base.warn('Scene [' + scene.getId() + '] failed to generate: ' + data.error);
+                })
+                .always(function() {
+
+                    //  Generation of this scene complete, try again
+                    base.doGenerate(deferred);
+                });
+
+            } else {
+
+                //  No scenes to generate
+                base.log('No scenes require generation');
+                deferred.resolve();
+            }
         }
     };
 
@@ -358,44 +432,60 @@ window.streetviewanimator.movie = function(options) {
         if (base.requiresGeneration()) {
 
             //  Once generated, set all the player frames, and begin playback
+            base.log('Movie requires generation prior to playback');
             base.generate()
             .done(function() {
 
-                //  Set frames
-                base.log('Setting frames in player');
-                base.player.reset(true);
-
-                for (var key in base.scenes) {
-
-                    base.log('Setting frames for scene [' + key + ']');
-                    base.player.addFrames(base.scenes[key].getFrames());
-                }
-
-                //  Begin playback
-                base.log('Beginning playback');
-                base.player.play();
-                deferred.resolve();
+                base.resolvePlay(deferred);
             });
 
         } else {
 
             //  Already generated
-            //  Set frames
-            base.log('Setting frames in player');
-            base.player.reset(true);
-
-            for (var key in base.scenes) {
-
-                base.log('Setting frames for scene [' + key + ']');
-                base.player.addFrames(base.scenes[key].getFrames());
-            }
-
-            base.log('Beginning playback');
-            base.player.play();
-            deferred.resolve();
+            base.resolvePlay(deferred);
         }
 
         return deferred.promise();
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Set the player frames and a note the start/end frames (for the callbacks)
+     * @param  {Object} deferred The deferred object to resolve
+     * @return {Void}
+     */
+    base.resolvePlay = function(deferred, resetPlayer) {
+
+        base.log('Setting frames in player and calculating start/end frames');
+        base.player.reset(true);
+
+        base.sceneStartFrames = {};
+        base.sceneStopFrames = {};
+
+        var lastStartFrame = 0;
+        var lastEndFrame = -1;
+
+        for (var key in base.scenes) {
+
+            base.log('Setting frames for scene [' + key + ']');
+            base.player.addFrames(base.scenes[key].getFrames());
+
+            //  Set the start frame, it's the lastEndFrame + 1
+            lastStartFrame = lastEndFrame + 1;
+            base.sceneStartFrames['frame'+lastStartFrame] = base.scenes[key];
+
+            //  Set the end frame, it's the start frame + number of frames
+            lastEndFrame = lastStartFrame + base.scenes[key].getNumFrames() - 1;
+            base.sceneStopFrames['frame'+lastEndFrame] = base.scenes[key];
+        }
+
+        //  Begin playback
+        base.log('Beginning playback');
+        base.player.play();
+
+        //  Resolve the promise
+        deferred.resolve();
     };
 
     // --------------------------------------------------------------------------
@@ -406,6 +496,122 @@ window.streetviewanimator.movie = function(options) {
      */
     base.stop = function() {
         base.player.stop();
+        return base;
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Called when the player enters a frame and calculates whether it's the exit
+     * frame of a scene, if so it triggers the `onEnterScene` event
+     * @param  {Number} currentFrame The current frame
+     * @return {Void}
+     */
+    base.playerEnterFrame = function(currentFrame) {
+
+        var methodName = 'frame' + currentFrame;
+        if (typeof base.sceneStartFrames[methodName] === 'object') {
+            base.log('Entering Scene:' + base.sceneStartFrames[methodName].getId());
+            base.options.onPlayerEnterScene.call(base.player, base.sceneStartFrames[methodName]);
+        }
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Called when the player exists a frame and calculates whether it's the exit
+     * frame of a scene, if so it triggers the `onExitScene` event
+     * @param  {Number} currentFrame The current frame
+     * @return {Void}
+     */
+    base.playerExitFrame = function(currentFrame) {
+
+        var methodName = 'frame' + currentFrame;
+        if (typeof base.sceneStopFrames[methodName] === 'object') {
+            base.log('Exiting Scene:' + base.sceneStopFrames[methodName].getId());
+            base.options.onPlayerExitScene.call(base.player, base.sceneStopFrames[methodName]);
+        }
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Resets the movie to it's default state
+     * @return {Object}
+     */
+    base.reset = function() {
+        base.log('Resetting');
+        base.doReset();
+        base.options.onReset.call(base);
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Actually performs the reset, without any calls to the log or firing the
+     * reset event
+     * @return {Void}
+     */
+    base.doReset = function() {
+
+        //  Local properties
+        base.scenes = {};
+        base.sceneStartFrames = {};
+        base.sceneStopFrames = {};
+        base.generated = false;
+        base.isGenerating = false;
+
+        //  Player
+        if (base.player) {
+            base.player.reset();
+        }
+
+        //  Router
+        if (base.router) {
+            base.router.reset();
+        }
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Set the player's framerate
+     * @param {Number} frameRate The framerate to use
+     * @return {Object}
+     */
+    base.setFrameRate = function(frameRate) {
+
+        base.log('Changing framerate from ' + base.options.player.frameRate + ' to ' + frameRate);
+        base.options.player.frameRate = parseInt(frameRate, 10);
+        return base;
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Set the player's framesize
+     * @param {Number} width  The width of each frame
+     * @param {Number} height The height of each frame
+     * @return {Object}
+     */
+    base.setFrameSize = function(width, height) {
+
+        base.log('Changing framesize from ' + base.options.frameWidth + 'x' + base.options.frameHeight + ' to ' + width + 'x' + height);
+        base.options.frameWidth = parseInt(width, 10);
+        base.options.frameHeight = parseInt(height, 10);
+        return base;
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Set the API key to use when contacting Google
+     * @param {String} apiKey The API Key to use
+     */
+    base.setApiKey = function(apiKey) {
+
+        base.log('Changing API key from ' + base.options.router.apiKey + ' to ' + apiKey);
+        base.router.setApiKey(apiKey);
         return base;
     };
 

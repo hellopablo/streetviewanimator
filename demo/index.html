@@ -78,10 +78,12 @@
             padding: 10px;
         }
         #meta > p,
-        #global-config > p
+        #global-config > p,
+        #scenes > p
         {
             padding-left: 0.25em;
             padding-bottom: 0.8em;
+            margin-bottom: 0.8em;
             font-size: 0.8em;
             font-weight: bold;
             border-bottom: 1px solid #EFEFEF;
@@ -91,6 +93,19 @@
             border: none;
             font-size: 2em;
             font-weight: bold;
+        }
+        #intro,
+        #sub-intro {
+            text-align: center;
+            border: none;
+            font-size: 2em;
+            font-weight: bold;
+        }
+        #sub-intro {
+            font-size: 1em;
+            font-weight: normal;
+            margin-bottom: 3em;
+            line-height: 1.75em;
         }
         #intro img {
             width: 50px;
@@ -113,7 +128,8 @@
             overflow: hidden;
             box-shadow: 0px 0px 5px rgba(0,0,0,0.3);
         }
-        #player .buffering {
+        #player .buffering,
+        #player .generating {
             display: none;
             position: absolute;
             left: 0;
@@ -126,8 +142,24 @@
             background-image: url(assets/img/buffering.gif);
             background-size: 32px;
         }
-        #player.buffering .buffering {
+        #player.buffering .buffering,
+        #player.generating .generating {
             display: block;
+        }
+        #player .buffering .text,
+        #player .generating .text {
+            text-align: center;
+            display: block;
+            position: relative;
+            top: 50%;
+            margin-top: 95px;
+            font-size: 1.25em;
+            background: rgba(0,0,0,0.1);
+            padding: 0.6em;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(0,0,0,0.5);
+            text-shadow: 0px 0px 3px rgba(255,255,255,1);
         }
         #player .canvas {
             width: 100%;
@@ -191,6 +223,9 @@
             width: 100%;
             box-sizing: border-box;
             padding: 0.25em;
+        }
+        #scenes {
+            margin-bottom: 3em;
         }
         #scenes li {
 
@@ -271,9 +306,19 @@
         <img src="assets/img/icon.png">
         StreetView Animator <small>Demo</small>
     </div>
+    <div id="sub-intro">
+        <p>
+            Source code and docs available on <a href="http://github.com/hellopablo/streetviewanimator">GitHub</a>.
+        </p>
+    </div>
     <div id="player">
         <div class="canvas"></div>
-        <div class="buffering"></div>
+        <div class="buffering">
+            <span class="text">Buffering</span>
+        </div>
+        <div class="generating">
+            <span class="text">Generating Route</span>
+        </div>
         <div class="scrubber">
             <div class="loaded"></div>
             <div class="current"></div>
@@ -284,8 +329,8 @@
         <button class="action" data-action="generate">
             Generate Movie
         </button>
-        <button class="action disabled" data-action="export-frames">
-            Export Frames
+        <button class="action" data-action="reset">
+            Reset Movie
         </button>
     </div>
     <div id="controls-player">
@@ -318,6 +363,12 @@
                 <tr>
                     <td class="label">Requires Generation</td>
                     <td class="value" id="meta-requires-generation">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Current Scene</td>
+                    <td class="value" id="meta-current-scene">
                         undefined
                     </td>
                 </tr>
@@ -357,25 +408,34 @@
                 <tr>
                     <td class="label">Frame Width</td>
                     <td class="input">
-                        <input type="text" id="param-frame-width" />
+                        <input type="text" id="param-frame-width" value="600" />
                     </td>
                 </tr>
                 <tr>
                     <td class="label">Frame Height</td>
                     <td class="input">
-                        <input type="text" id="param-frame-height" />
+                        <input type="text" id="param-frame-height" value="338" />
                     </td>
                 </tr>
                 <tr>
                     <td class="label">Frame Rate</td>
                     <td class="input">
-                        <input type="text" id="param-frame-rate" />
+                        <input type="text" id="param-frame-rate" value="12" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Google Maps API Key</td>
+                    <td class="input">
+                        <input type="text" id="param-api-key" value="AIzaSyBKOC2VpSHJZC-52OROCi2Uxb7YQB34IDM" />
                     </td>
                 </tr>
             </tbody>
         </table>
     </div>
     <div id="scenes">
+        <p>
+            Scenes
+        </p>
         <ul>
             <li class="add-scene">
                 <button class="action" data-action="add-scene">
@@ -386,11 +446,12 @@
     </div>
     <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.1.2/mustache.min.js"></script>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=geometry"></script>
     <script type="text/javascript" src="../bower_components/frameplayer/dist/frameplayer.min.js"></script>
     <script type="text/javascript" src="../dist/streetviewanimator.min.js"></script>
     <script type="text/javascript" src="assets/js/scenes.js"></script>
     <script type="text/x-template" id="template-add-scene">
-        <li>
+        <li class="scene-config">
             <p>
                 Type:
                 <label>
@@ -401,7 +462,7 @@
                     <input type="radio" class="param-type" value="MANUAL" {{#isManual}}checked="checked"{{/isManual}}/>
                     Manual
                     <small>
-                        (Generated using <a href="http://hellopablo.github.io/streetviewplotter">StreetView Plotter</a>)
+                        (Generated using <a href="http://hellopablo.github.io/streetviewplotter" target="_blank">StreetView Plotter</a>)
                     </small>
                 </label>
                 <button class="action" data-action="remove-scene">
@@ -412,22 +473,22 @@
             <div class="auto" {{#isAuto}}style="display: block"{{/isAuto}}>
                 <p>
                     <label>
-                        Start:
-                        <input class="param-start" type="text" value="{{start}}" />
+                        Origin:
+                        <input class="param-origin" type="text" value="{{origin}}" />
                     </label>
                     <label>
-                        End:
-                        <input class="param-end" type="text" value="{{end}}" />
+                        Destination:
+                        <input class="param-destination" type="text" value="{{destination}}" />
                     </label>
                 </p>
                 <p>
                     <label>
-                        Target Lat:
-                        <input class="param-target-lat" type="text" value="{{target.lat}}" placeholder="Optional" />
+                        Target:
+                        <input class="param-target" type="text" value="{{target}}" placeholder="Optional" />
                     </label>
                     <label>
-                        Target Lng:
-                        <input class="param-target-lng" type="text" value="{{target.lng}}" placeholder="Optional" />
+                        Duration:
+                        <input class="param-duration" type="text" value="{{duration}}" placeholder="Optional" />
                     </label>
                 </p>
                 <p>
@@ -440,35 +501,35 @@
                         <input class="param-fov" type="text" value="{{fov}}" placeholder="Optional" />
                     </label>
                 </p>
-                <p>
-                    <label>
-                        Duration:
-                        <input class="param-duration" type="text" value="{{duration}}" placeholder="Optional" />
-                    </label>
-                </p>
             </div>
 
             <div class="manual" {{#isManual}}style="display: block"{{/isManual}}>
-                <textarea placeholder="Paste a manual config object here" class="param-manual">{{framesAsJson}}</textarea>
+                <textarea placeholder="Paste a manual config object here" class="param-frames">{{framesAsJson}}</textarea>
             </div>
         </li>
     </script>
     <script type="text/javascript">
 
         var sva = new window.streetviewanimator.movie({
-            'debug': false,
+            'debug': true,
             'playerDebug': true,
             'router': {
                 'apiKey': null
             },
+            // 'scenes': window.demo,
             'player': {
-                'frameRate': 2,
                 'domElement': '#player'
             },
-            'scenes': window.demo,
             'onReady': function() {
 
                 window.SVA.debug.log('EVENT: onReady');
+                $('#meta-num-frames').text(this.getNumFrames());
+                $('#meta-num-scenes').text(this.getNumScenes());
+                $('#meta-requires-generation').text(this.requiresGeneration());
+            },
+            'onReset': function() {
+
+                window.SVA.debug.log('EVENT: onReset');
                 $('#meta-num-frames').text(this.getNumFrames());
                 $('#meta-num-scenes').text(this.getNumScenes());
                 $('#meta-requires-generation').text(this.requiresGeneration());
@@ -566,6 +627,16 @@
             'onPlayerReset': function() {
 
                 window.FP.debug.log('EVENT: onPlayerReset');
+            },
+            'onPlayerEnterScene': function(scene) {
+
+                window.SVA.debug.log('EVENT: onPlayerEnterScene ' + scene.getId());
+                $('#meta-current-scene').text(scene.getId());
+            },
+            'onPlayerExitScene': function(scene) {
+
+                window.SVA.debug.log('EVENT: onPlayerExitScene ' + scene.getId());
+                $('#meta-current-scene').text(scene.getId());
             }
         });
 
@@ -578,11 +649,11 @@
                 switch (action) {
 
                     case 'generate':
-                        movieGenerate();
+                        movieGenerate(false);
                         break;
 
-                    case 'export-frames':
-                        movieExportFrames();
+                    case 'reset':
+                        movieReset();
                         break;
 
                     case 'add-scene':
@@ -602,30 +673,85 @@
 
                         playerStop();
                         break;
-
                 }
             }
         });
 
         //  Button functions
-        function movieGenerate() {
-            sva.generate();
+        function movieGenerate(play) {
+
+            sva.reset();
+
+            //  Set the global parameters
+            sva.setFrameRate($('#param-frame-rate').val());
+            sva.setFrameSize($('#param-frame-width').val(), $('#param-frame-height').val());
+            sva.setApiKey($('#param-api-key').val());
+
+            //  Add each of the configured scenes
+            $('#scenes li.scene-config').each(function(index, element) {
+
+                var scene = {
+                    'id': 'scene-' + (index+1),
+                    'type': $(element).find('.param-type:checked').val() || 'AUTO',
+                    'origin': $(element).find('.param-origin').val() || null,
+                    'destination': $(element).find('.param-destination').val() || null,
+                    'target': $(element).find('.param-target').val() || null,
+                    'duration': parseInt($(element).find('.param-duration').val(), 10) || null,
+                    'pitch': parseInt($(element).find('.param-pitch').val(), 10) || null,
+                    'fov': parseInt($(element).find('.param-fov').val(), 10) || null,
+                    'frames': $(element).find('.param-frames').val() || []
+                };
+
+                if (typeof scene.frames === 'string' && scene.frames.length) {
+
+                    try {
+                        scene.frames = JSON.parse(scene.frames);
+                    } catch (err) {
+                        window.SVA.debug.error('Failed to parse manual config for scene at index ' + index);
+                        window.SVA.debug.warn('Skipping scene at index ' + index + ' due to errors');
+                        return;
+                    }
+                }
+
+                //  Add the scene to the movie
+                sva.scene(scene.id, scene);
+            });
+
+            sva.generate()
+            .done(function() {
+                if (play) {
+                    sva.play();
+                }
+            });
+        }
+
+        function movieReset() {
+
+            sva.reset();
         }
 
         function addScene() {
+
             var html = $('#template-add-scene').html();
+
+            //  Run through Mustache to remove template placeholders
+            html = Mustache.render(html, {'isAuto': true});
+
             $('#scenes').find('li.add-scene').before(html);
         }
 
         function removeScene(elem) {
+
             elem.closest('li').remove();
         }
 
         function playerPlay() {
+
             sva.play();
         }
 
         function playerStop() {
+
             sva.stop();
         }
 
@@ -666,6 +792,18 @@
                 tplData.framesAsJson = JSON.stringify(tplData.frames, null, "\t");
             }
 
+            if (typeof tplData.origin === 'object') {
+                tplData.origin = tplData.origin.lat + ',' + tplData.origin.lng;
+            }
+
+            if (typeof tplData.destination === 'object') {
+                tplData.destination = tplData.destination.lat + ',' + tplData.destination.lng;
+            }
+
+            if (typeof tplData.target === 'object') {
+                tplData.target = tplData.target.lat + ',' + tplData.target.lng;
+            }
+
             var tpl = Mustache.render(tplAddScene, tplData);
 
             $('#scenes li.add-scene').before(tpl);
@@ -675,8 +813,10 @@
         //  Bind to canvas
         $('#player .canvas').on('click', function() {
 
-            if (sva.player.getPlayerState() === 'STOPPED') {
-                sva.play();
+            if (sva.player.getPlayerState() === 'STOPPED' && sva.requiresGeneration()) {
+                movieGenerate(true);
+            } else if (sva.player.getPlayerState() === 'STOPPED' && !sva.requiresGeneration()) {
+                playerPlay();
             } else {
                 sva.stop();
             }

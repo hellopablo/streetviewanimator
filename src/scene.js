@@ -65,6 +65,15 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
     // --------------------------------------------------------------------------
 
     /**
+     * The travel mode to use when calculating the route between the origin and
+     * the destination
+     * @type {String}
+     */
+    base.travelMode = options.travelMode || null;
+
+    // --------------------------------------------------------------------------
+
+    /**
      * The scene's duration, in seconds
      * @type {Number}
      */
@@ -199,33 +208,89 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
 
         if (base.type === 'AUTO') {
 
-            if (!base.origin) {
-                throw('An origin must be specified');
-            } else if (base.origin !== null && typeof base.origin === 'object') {
-                if (typeof base.origin.lat === 'undefined' || !base.origin.lat.length) {
+            if (typeof base.origin === 'string') {
+
+                if (!base.origin.length) {
+
+                    base.warn(typeof base.origin, base.origin);
+                    throw('An origin must be specified');
+                }
+
+            } else if (typeof base.origin === 'object' && base.origin !== null) {
+
+                base.origin.lat = parseFloat(base.origin.lat, 10) || 0;
+
+                if (!base.origin.lng) {
+
+                    base.warn(typeof base.origin, base.origin);
                     throw('If origin is supplied as an object, the lat property cannot be empty');
                 }
-                if (typeof base.origin.lng === 'undefined' || !base.origin.lng.length) {
+
+                base.origin.lng = parseFloat(base.origin.lng, 10) || 0;
+
+                if (!base.origin.lng) {
+
+                    base.warn(typeof base.origin, base.origin);
                     throw('If origin is supplied as an object, the lng property cannot be empty');
                 }
+
+            } else {
+
+                base.warn(typeof base.origin, base.origin);
+                throw('Invalid data type for origin, or origin missing; valid data types are string or object literal');
             }
 
-            if (!base.destination) {
-                throw('An destination must be specified');
-            } else if (base.destination !== null && typeof base.destination === 'object') {
-                if (typeof base.destination.lat === 'undefined' || !base.destination.lat.length) {
+            // --------------------------------------------------------------------------
+
+            if (typeof base.destination === 'string') {
+
+                if (!base.destination.length) {
+
+                    base.warn(typeof base.destination, base.destination);
+                    throw('An destination must be specified');
+                }
+
+            } else if (typeof base.destination === 'object' && base.destination !== null) {
+
+                base.destination.lat = parseFloat(base.destination.lat, 10) || 0;
+
+                if (!base.destination.lng) {
+
+                    base.warn(typeof base.destination, base.destination);
                     throw('If destination is supplied as an object, the lat property cannot be empty');
                 }
-                if (typeof base.destination.lng === 'undefined' || !base.destination.lng.length) {
+
+                base.destination.lng = parseFloat(base.destination.lng, 10) || 0;
+
+                if (!base.destination.lng) {
+
+                    base.warn(typeof base.destination, base.destination);
                     throw('If destination is supplied as an object, the lng property cannot be empty');
                 }
+
+            } else {
+
+                base.warn(typeof base.destination, base.destination);
+                throw('Invalid data type for destination, or destination missing; valid data types are string or object literal');
             }
 
-            if (base.target !== null && typeof base.target === 'object') {
-                if (typeof base.target.lat === 'undefined' || !base.target.lat.length) {
+            // --------------------------------------------------------------------------
+
+            if (typeof base.target === 'object' && base.target !== null) {
+
+                base.target.lat = parseFloat(base.target.lat, 10) || 0;
+
+                if (!base.target.lng) {
+
+                    base.warn(typeof base.target, base.target);
                     throw('If target is supplied as an object, the lat property cannot be empty');
                 }
-                if (typeof base.target.lng === 'undefined' || !base.target.lng.length) {
+
+                base.target.lng = parseFloat(base.target.lng, 10) || 0;
+
+                if (!base.target.lng) {
+
+                    base.warn(typeof base.target, base.target);
                     throw('If target is supplied as an object, the lng property cannot be empty');
                 }
             }
@@ -241,6 +306,30 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
             throw('Invalid scene type "' + base.type + '"');
         }
 
+        // --------------------------------------------------------------------------
+
+        /**
+         * If the origin, destination or target are strings and are lat/lng coordinates
+         * (i.e., in the format Number,Number) then translate them into an object.
+         */
+
+        var properties = ['origin', 'destination', 'target'];
+        var regex = /^-?\d+(\.\d+),-?\d+(\.\d+)$/;
+        var bits = null;
+
+        for (var i = properties.length - 1; i >= 0; i--) {
+
+            if (typeof base[properties[i]] === 'string' && regex.test(base[properties[i]])) {
+                bits = base[properties[i]].split(',');
+                base[properties[i]] = {
+                    'lat': parseFloat(bits[0], 10),
+                    'lng': parseFloat(bits[1], 10)
+                };
+            }
+        }
+
+        // --------------------------------------------------------------------------
+
         return base;
     };
 
@@ -254,7 +343,7 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
 
         var deferred = new $.Deferred();
 
-        if (!base.requiresGeneration()) {
+        if (base.type === 'MANUAL' || !base.requiresGeneration()) {
 
             base.log('Generation not required');
             deferred.resolve();
@@ -264,20 +353,235 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
             //  Begin generation
             base.log('Requires generation');
             base.log('Beginning generation');
-            base.log('Completed generation');
 
-            base.frames = [
-                "http://lorempixel.com/600/338/people",
-                "http://lorempixel.com/600/338/abstract",
-                "http://lorempixel.com/600/338/animals",
-                "http://lorempixel.com/600/338/food"
-            ];
+            //  Reset frame stack
+            base.frames = [];
 
-            base.generated = true;
-            deferred.resolve();
+            /**
+             * Here is where the magic happens. We need to generate our frames
+             * based on the supplied location data.
+             *
+             * 1. Work out the route between the origin and the destination
+             * 2. Pick out the right number of points/steps to satisfy the
+             *    duration of the scene.
+             * 3. Process each point, generating the streetview URL and save
+             *    to the frame stack.
+             * 4. Resolve the process so the generator can continue
+             */
+
+            //  Geocode anything which needs geocoded
+            base.geocodePoints(deferred)
+            .done(function() {
+
+                //  Everything has been geocoded, now get directions
+                base.log('Getting directions between origin and destination');
+                base.movie.router.getDirections(base.origin, base.destination, base.travelMode)
+                .done(function(data) {
+
+                    //  Process the waypoints, only do enough to satisfy the scene duration
+                    var maxFrames = base.movie.player.options.frameRate * base.duration;
+
+                    base.log(base.movie.player.options.frameRate, base.duration);
+
+                    for (var points = [], i = 0, s = data.routes[0].legs.length; s > i; i++) {
+                        for (var r = 0, u = data.routes[0].legs[i].steps.length; u > r; r++) {
+                            for (var d = 0, g = data.routes[0].legs[i].steps[r].lat_lngs.length; g > d; d++) {
+
+                                if (points.length < maxFrames) {
+                                    points.push(data.routes[0].legs[i].steps[r].lat_lngs[d]);
+                                }
+                            }
+                        }
+                    }
+
+                    base.log('Successfully extracted ' + points.length + ' waypoints');
+                    base.log('Processing waypoints');
+
+                    var logPrefix, heading, url, targetObj;
+
+                    if (base.target !== null) {
+                        targetObj = new window.google.maps.LatLng(
+                            base.target.lat,
+                            base.target.lng
+                        );
+                    }
+
+                    for (var i = 0; i < points.length; i++) {
+
+                        logPrefix = 'Waypoint ' + i + ' (' + points[i].lat() + ', ' + points[i].lng() + '): ';
+
+                        if (typeof points[i+1] !== 'undefined') {
+
+                            base.log(logPrefix + 'Determining heading');
+
+                            /**
+                             * If a target is deifned, look at it, otherwise look at the next
+                             * way point.
+                             */
+                            if (base.target !== null) {
+
+                                heading = base.movie.router.computeHeading(points[i], targetObj);
+
+                            } else {
+
+                                heading = base.movie.router.computeHeading(points[i], points[i+1]);
+                            }
+
+                            base.log(logPrefix + 'Generating StreetView URL');
+                            url = base.generateStreetViewUrl(points[i].lat(), points[i].lng(), heading);
+
+                        } else {
+
+                            //  Last frame
+                            base.log(logPrefix + 'Last frame');
+                            base.log(logPrefix + 'Determining heading');
+
+                            /**
+                             * If a target is deifned, look at it, otherwise look in the same
+                             * direction as the previous waypoint.
+                             */
+                            if (base.target !== null) {
+
+                                heading = base.movie.router.computeHeading(points[i], targetObj);
+
+                            } else {
+
+                                heading = heading;
+                            }
+
+                            base.log(logPrefix + 'Generating StreetView URL');
+                            url = base.generateStreetViewUrl(points[i].lat(), points[i].lng(), heading);
+                        }
+
+                        base.log(logPrefix + 'Saving frame to stack');
+                        base.frames.push(url);
+                    }
+
+                    base.log('Finished processing waypoints');
+
+                    //  Resolve the request
+                    base.log('Completed generation');
+                    base.generated = true;
+                    deferred.resolve();
+
+                }).fail(function(data) {
+
+                    /**
+                     * Set this to true so that the main generation loop doesn't get
+                     * stuck in an infinite loop
+                     */
+                    base.generated = true;
+
+                    //  Reject the promise
+                    deferred.reject({
+                        'error': data.error
+                    });
+                });
+            }).fail(function() {
+
+                /**
+                 * Set this to true so that the main generation loop doesn't get
+                 * stuck in an infinite loop
+                 */
+                base.generated = true;
+
+                //  Reject the promise
+                deferred.reject({
+                    'error': 'Failed to geocode points'
+                });
+            });
         }
 
         return deferred.promise();
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Compile the streetview URL
+     * @param  {Number} lat     The camera's latitude
+     * @param  {Number} lng     The camera's longitude
+     * @param  {Number} heading The camera's heading
+     * @return {String}
+     */
+    base.generateStreetViewUrl = function(lat, lng, heading) {
+
+        var url;
+        url = 'http://maps.googleapis.com/maps/api/streetview?';
+        url += 'size=' + base.movie.options.frameWidth + 'x' + base.movie.options.frameHeight;
+        url += '&location=' + lat + ',' + lng;
+        url += '&heading=' + heading;
+        url += '&pitch=-1.62';
+        url += '&sensor=false';
+        url += '&key=' + base.movie.router.apiKey;
+
+        if (!$.trim(base.movie.router.apiKey).length) {
+            base.warn('Missing API key, StreetView imagery will fail');
+        }
+
+        return url;
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Loops through the origin,destination and target and geocodes them if they
+     * are not already geocoded.
+     * @return {Object} A jQuery promise
+     */
+    base.geocodePoints = function() {
+
+        base.log('Geocoding origin/destination/target');
+        var geocodeDeferred = new $.Deferred();
+        base.doGeocodePoints(geocodeDeferred);
+        return geocodeDeferred.promise();
+    }
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Checks all the lat/lng points are geocoded
+     * @return {Void}
+     */
+    base.doGeocodePoints = function(geocodeDeferred) {
+
+        var check = {
+            'origin': base.origin,
+            'destination': base.destination,
+            'target': base.target
+        };
+
+        var toGeocode = null;
+
+        for (var key in check) {
+
+            if (typeof check[key] === 'string') {
+
+                toGeocode = key;
+                break
+            }
+        };
+
+        if (toGeocode !== null) {
+            base.movie.router.getCoordinatesFromAddress(check[key])
+            .done(function(data) {
+
+                base[toGeocode] = data;
+                base.doGeocodePoints(geocodeDeferred);
+
+            })
+            .fail(function(data) {
+
+                geocodeDeferred.reject({
+                   'error': data.error
+                });
+            });
+
+        } else {
+
+            //  Nothing requires geocoding, resolve the request
+            geocodeDeferred.resolve();
+        }
     };
 
     // --------------------------------------------------------------------------
@@ -332,6 +636,19 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
     base.log = function() {
 
         $SVA.debug.log('SVA [Scene:' + base.getId() + ']:', arguments);
+        return base;
+    };
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * Sends an item to the warn log, prefixing it with a string so that the class
+     * making the log is easily identifiable
+     * @return {Object}
+     */
+    base.warn = function() {
+
+        $SVA.debug.warn('SVA [Scene:' + base.getId() + ']:', arguments);
         return base;
     };
 

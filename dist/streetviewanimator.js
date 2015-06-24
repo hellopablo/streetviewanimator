@@ -161,10 +161,10 @@ window.streetviewanimator.movie = function(options) {
         router: {
             apiKey: null
         },
+        frameWidth: 600,
+        frameHeight: 338,
         player: {
             frameRate: 12,
-            frameWidth: 600,
-            frameHeight: 338,
             domElement: null,
             mode: "background"
         },
@@ -176,6 +176,7 @@ window.streetviewanimator.movie = function(options) {
         onSceneDestroy: function() {},
         onGenerateStart: function() {},
         onGenerateEnd: function() {},
+        onReset: function() {},
         //  Player Events
         onPlayerReady: function(player) {},
         onPlayerLoadStart: function(player) {},
@@ -189,7 +190,10 @@ window.streetviewanimator.movie = function(options) {
         onPlayerEnterFrame: function(player, currentFrame) {},
         onPlayerExitFrame: function(player, currentFrame) {},
         onPlayerLoop: function(player) {},
-        onPlayerReset: function(player) {}
+        onPlayerReset: function(player) {},
+        //  Custom player events
+        onPlayerEnterScene: function(player, scene) {},
+        onPlayerExitScene: function(player, scene) {}
     };
     // --------------------------------------------------------------------------
     /**
@@ -197,6 +201,18 @@ window.streetviewanimator.movie = function(options) {
      * @type {Object}
      */
     base.scenes = {};
+    // --------------------------------------------------------------------------
+    /**
+     * An array of scene's first frames
+     * @type {Object}
+     */
+    base.sceneStartFrames = {};
+    // --------------------------------------------------------------------------
+    /**
+     * An array of scene's first frames
+     * @type {Object}
+     */
+    base.sceneStopFrames = {};
     // --------------------------------------------------------------------------
     /**
      * Holds whether the movie has been generated or not
@@ -209,6 +225,18 @@ window.streetviewanimator.movie = function(options) {
      * @type {Boolean}
      */
     base.isGenerating = false;
+    // --------------------------------------------------------------------------
+    /**
+     * Holds the router instance
+     * @type {Object}
+     */
+    base.router = null;
+    // --------------------------------------------------------------------------
+    /**
+     * Holds the player instance
+     * @type {Object}
+     */
+    base.player = null;
     // --------------------------------------------------------------------------
     /**
      * Constructs the movie
@@ -224,6 +252,8 @@ window.streetviewanimator.movie = function(options) {
             base.options.player.debug = true;
         }
         base.log("Constructing");
+        //  Reset everything
+        base.doReset();
         //  Setup singletons
         base.router = new $SVA.router(base.options.router, base);
         //  And finally the player, check it exists first
@@ -258,10 +288,12 @@ window.streetviewanimator.movie = function(options) {
                 base.options.onPlayerStop.call(this);
             };
             base.options.player.onEnterFrame = function(currentFrame) {
-                base.options.onPlayerEnterFrame.call(this, currentFrame);
+                base.playerEnterFrame.call(base, currentFrame);
+                base.options.onPlayerEnterFrame.call(this);
             };
             base.options.player.onExitFrame = function(currentFrame) {
-                base.options.onPlayerExitFrame.call(this, currentFrame);
+                base.playerExitFrame.call(base, currentFrame);
+                base.options.onPlayerExitFrame.call(this);
             };
             base.options.player.onLoop = function() {
                 base.options.onPlayerLoop.call(this);
@@ -333,7 +365,6 @@ window.streetviewanimator.movie = function(options) {
         var sceneNumFrames;
         for (var key in base.scenes) {
             sceneNumFrames = base.scenes[key].getNumFrames();
-            base.log("Scene [" + key + "] has " + sceneNumFrames + " frames");
             numFrames += sceneNumFrames;
         }
         return numFrames;
@@ -351,46 +382,67 @@ window.streetviewanimator.movie = function(options) {
         } else {
             base.log("Beginning scene generation");
             base.isGenerating = true;
+            //  Update the player element so some visual feedback can be given easily
+            base.player.element.addClass("generating");
+            //  Fire the `onGenerateStart` event
             base.options.onGenerateStart.call(base);
         }
         var deferred = new $.Deferred();
         if (!base.requiresGeneration()) {
+            base.log("Movie is already generated");
+            //  Reset local variables
             base.isGenerating = false;
             base.generated = true;
-            base.log("Movie is already generated");
+            //  Resolve the promise
             deferred.resolve(deferred);
         } else {
-            //  Process each scene, once they are all processed resolve the promise
+            //  Process each scene
             base.doGenerate(deferred);
         }
         //  Fired when generation is complete
         deferred.done(function() {
+            base.log("Completed movie generation");
+            //  Reset local variables
             base.isGenerating = false;
             base.generated = true;
-            base.log("Completed movie generation");
+            //  Update the player element so some visual feedback can be given easily
+            base.player.element.removeClass("generating");
+            //  Fire the `onGenerateEnd` event
             base.options.onGenerateEnd.call(base);
         });
         return deferred.promise();
     };
     // --------------------------------------------------------------------------
+    /**
+     * The callback function which generates each scene
+     * @param  {Object} deferred The deferred object to resolve
+     * @return {Void}
+     */
     base.doGenerate = function(deferred) {
-        //  Find a scene which has not been generated
-        var scene;
-        for (var key in base.scenes) {
-            if (base.scenes[key].requiresGeneration()) {
-                scene = base.scenes[key];
-                break;
-            }
-        }
-        if (scene) {
-            scene.generate().done(function() {
-                //  Generation of this scene complete, try again
-                base.doGenerate(deferred);
-            });
-        } else {
-            //  No scenes to generate
-            base.log("No scenes require generation");
+        if (!base.getNumScenes()) {
+            base.warn("No scenes are present in the movie");
             deferred.resolve();
+        } else {
+            //  Find a scene which has not been generated
+            var scene;
+            for (var key in base.scenes) {
+                if (base.scenes[key].requiresGeneration()) {
+                    scene = base.scenes[key];
+                    break;
+                }
+            }
+            if (scene) {
+                scene.generate().fail(function(data) {
+                    base.warn("Scene [" + scene.getId() + "] failed to generate: " + data.error);
+                }).always(function() {
+                    //  Generation of this scene complete, try again
+                    base.doGenerate(deferred);
+                });
+            } else {
+                //  No scenes to generate
+                base.log("No scenes require generation");
+                deferred.resolve();
+            }
         }
     };
     // --------------------------------------------------------------------------
@@ -410,33 +462,44 @@ window.streetviewanimator.movie = function(options) {
         var deferred = new $.Deferred();
         if (base.requiresGeneration()) {
             //  Once generated, set all the player frames, and begin playback
+            base.log("Movie requires generation prior to playback");
             base.generate().done(function() {
-                //  Set frames
-                base.log("Setting frames in player");
-                base.player.reset(true);
-                for (var key in base.scenes) {
-                    base.log("Setting frames for scene [" + key + "]");
-                    base.player.addFrames(base.scenes[key].getFrames());
-                }
-                //  Begin playback
-                base.log("Beginning playback");
-                base.player.play();
-                deferred.resolve();
+                base.resolvePlay(deferred);
             });
         } else {
             //  Already generated
-            //  Set frames
-            base.log("Setting frames in player");
-            base.player.reset(true);
-            for (var key in base.scenes) {
-                base.log("Setting frames for scene [" + key + "]");
-                base.player.addFrames(base.scenes[key].getFrames());
-            }
-            base.log("Beginning playback");
-            base.player.play();
-            deferred.resolve();
+            base.resolvePlay(deferred);
         }
         return deferred.promise();
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Set the player frames and a note the start/end frames (for the callbacks)
+     * @param  {Object} deferred The deferred object to resolve
+     * @return {Void}
+     */
+    base.resolvePlay = function(deferred, resetPlayer) {
+        base.log("Setting frames in player and calculating start/end frames");
+        base.player.reset(true);
+        base.sceneStartFrames = {};
+        base.sceneStopFrames = {};
+        var lastStartFrame = 0;
+        var lastEndFrame = -1;
+        for (var key in base.scenes) {
+            base.log("Setting frames for scene [" + key + "]");
+            base.player.addFrames(base.scenes[key].getFrames());
+            //  Set the start frame, it's the lastEndFrame + 1
+            lastStartFrame = lastEndFrame + 1;
+            base.sceneStartFrames["frame" + lastStartFrame] = base.scenes[key];
+            //  Set the end frame, it's the start frame + number of frames
+            lastEndFrame = lastStartFrame + base.scenes[key].getNumFrames() - 1;
+            base.sceneStopFrames["frame" + lastEndFrame] = base.scenes[key];
+        }
+        //  Begin playback
+        base.log("Beginning playback");
+        base.player.play();
+        //  Resolve the promise
+        deferred.resolve();
     };
     // --------------------------------------------------------------------------
     /**
@@ -445,6 +508,100 @@ window.streetviewanimator.movie = function(options) {
      */
     base.stop = function() {
         base.player.stop();
+        return base;
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Called when the player enters a frame and calculates whether it's the exit
+     * frame of a scene, if so it triggers the `onEnterScene` event
+     * @param  {Number} currentFrame The current frame
+     * @return {Void}
+     */
+    base.playerEnterFrame = function(currentFrame) {
+        var methodName = "frame" + currentFrame;
+        if (typeof base.sceneStartFrames[methodName] === "object") {
+            base.log("Entering Scene:" + base.sceneStartFrames[methodName].getId());
+            base.options.onPlayerEnterScene.call(base.player, base.sceneStartFrames[methodName]);
+        }
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Called when the player exists a frame and calculates whether it's the exit
+     * frame of a scene, if so it triggers the `onExitScene` event
+     * @param  {Number} currentFrame The current frame
+     * @return {Void}
+     */
+    base.playerExitFrame = function(currentFrame) {
+        var methodName = "frame" + currentFrame;
+        if (typeof base.sceneStopFrames[methodName] === "object") {
+            base.log("Exiting Scene:" + base.sceneStopFrames[methodName].getId());
+            base.options.onPlayerExitScene.call(base.player, base.sceneStopFrames[methodName]);
+        }
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Resets the movie to it's default state
+     * @return {Object}
+     */
+    base.reset = function() {
+        base.log("Resetting");
+        base.doReset();
+        base.options.onReset.call(base);
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Actually performs the reset, without any calls to the log or firing the
+     * reset event
+     * @return {Void}
+     */
+    base.doReset = function() {
+        //  Local properties
+        base.scenes = {};
+        base.sceneStartFrames = {};
+        base.sceneStopFrames = {};
+        base.generated = false;
+        base.isGenerating = false;
+        //  Player
+        if (base.player) {
+            base.player.reset();
+        }
+        //  Router
+        if (base.router) {
+            base.router.reset();
+        }
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Set the player's framerate
+     * @param {Number} frameRate The framerate to use
+     * @return {Object}
+     */
+    base.setFrameRate = function(frameRate) {
+        base.log("Changing framerate from " + base.options.player.frameRate + " to " + frameRate);
+        base.options.player.frameRate = parseInt(frameRate, 10);
+        return base;
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Set the player's framesize
+     * @param {Number} width  The width of each frame
+     * @param {Number} height The height of each frame
+     * @return {Object}
+     */
+    base.setFrameSize = function(width, height) {
+        base.log("Changing framesize from " + base.options.frameWidth + "x" + base.options.frameHeight + " to " + width + "x" + height);
+        base.options.frameWidth = parseInt(width, 10);
+        base.options.frameHeight = parseInt(height, 10);
+        return base;
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Set the API key to use when contacting Google
+     * @param {String} apiKey The API Key to use
+     */
+    base.setApiKey = function(apiKey) {
+        base.log("Changing API key from " + base.options.router.apiKey + " to " + apiKey);
+        base.router.setApiKey(apiKey);
         return base;
     };
     // --------------------------------------------------------------------------
@@ -496,17 +653,133 @@ window.streetviewanimator.router = function(options, movieInstance) {
      */
     base.apiKey = options.apiKey;
     // --------------------------------------------------------------------------
+    /**
+     * Holds an instance of the direction service
+     * @type {Object}
+     */
+    base.directionService = null;
+    // --------------------------------------------------------------------------
+    /**
+     * Holds an instance of the geocoder
+     * @type {Object}
+     */
+    base.geocoder = null;
+    // --------------------------------------------------------------------------
+    /**
+     * Computes the heading between two points
+     * @type {Object}
+     */
+    base.computeHeading = null;
+    // --------------------------------------------------------------------------
+    /**
+     * A cache of geocoded strings
+     * @type {Array}
+     */
+    base.geocodeCache = [];
+    // --------------------------------------------------------------------------
     base.__construct = function() {
         base.log("Constructing");
+        base.doReset();
+        //  Instanciate the Google services
+        if (typeof window.google !== "undefined" && typeof window.google.maps !== "undefined") {
+            if (typeof window.google.maps.DirectionsService !== "undefined") {
+                base.directionService = new window.google.maps.DirectionsService();
+            } else {
+                throw "Google Maps Direction Service not available";
+            }
+            if (typeof window.google.maps.Geocoder !== "undefined") {
+                base.geocoder = new window.google.maps.Geocoder();
+            } else {
+                throw "Google Maps Geocoder not available";
+            }
+            if (typeof window.google.maps.geometry !== "undefined") {
+                base.computeHeading = window.google.maps.geometry.spherical.computeHeading;
+            } else {
+                throw "Google Maps Geometry library not available";
+            }
+        } else {
+            throw "Google Maps Libraries were not found";
+        }
     };
     // --------------------------------------------------------------------------
     /**
-     * Set the API key to sue when communicating with Google
-     * @param {String} apiKey The API key to sue
+     * Set the API key to use when communicating with Google
+     * @param {String} apiKey The API key to use
      */
     base.setApiKey = function(apiKey) {
         base.apiKey = apiKey;
         return base;
+    };
+    // --------------------------------------------------------------------------
+    base.reset = function() {
+        base.log("Resetting");
+        base.doReset();
+    };
+    // --------------------------------------------------------------------------
+    base.doReset = function() {
+        base.geocodeCache = [];
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Geocode a string and get the coordinates
+     * @param  {String} address The address to geocode
+     * @return {Object}         A jQuery promise
+     */
+    base.getCoordinatesFromAddress = function(address) {
+        var deferred = new $.Deferred();
+        base.log('Geocoding "' + address + '"');
+        base.geocoder.geocode({
+            address: address
+        }, function(results, status) {
+            if (status === window.google.maps.GeocoderStatus.OK) {
+                base.log("Successfully geocoded " + address);
+                base.log("Lat: " + results[0].geometry.location.lat());
+                base.log("Lng: " + results[0].geometry.location.lng());
+                var coordinates = {
+                    lat: results[0].geometry.location.lat(),
+                    lng: results[0].geometry.location.lng()
+                };
+                deferred.resolve(coordinates);
+            } else {
+                base.log('"' + address + '" could not be geocoded');
+                deferred.reject({
+                    error: 'Failed to geocode "' + address + '".',
+                    response: results
+                });
+            }
+        });
+        return deferred.promise();
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Returns directions between two coordinates
+     * @return {Object} A jQuery promise
+     */
+    base.getDirections = function(origin, destination, travelMode) {
+        var deferred, originObj, destinationObj, request;
+        deferred = new $.Deferred();
+        originObj = new window.google.maps.LatLng(origin.lat, origin.lng);
+        destinationObj = new window.google.maps.LatLng(destination.lat, destination.lng);
+        travelMode = travelMode || window.google.maps.DirectionsTravelMode.DRIVING;
+        request = {
+            origin: originObj,
+            destination: destinationObj,
+            travelMode: travelMode
+        };
+        base.log("Getting " + travelMode + " directions", request);
+        base.directionService.route(request, function(response, status) {
+            if (status === window.google.maps.DirectionsStatus.OK) {
+                base.log("Directions received");
+                deferred.resolve(response);
+            } else {
+                base.log("Directions failed: ", status);
+                deferred.reject({
+                    error: 'Failed to get directions, received status "' + status + '"',
+                    response: response
+                });
+            }
+        });
+        return deferred.promise();
     };
     // --------------------------------------------------------------------------
     /**
@@ -582,6 +855,13 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
      * @type {Mixed}
      */
     base.destination = options.destination || null;
+    // --------------------------------------------------------------------------
+    /**
+     * The travel mode to use when calculating the route between the origin and
+     * the destination
+     * @type {String}
+     */
+    base.travelMode = options.travelMode || null;
     // --------------------------------------------------------------------------
     /**
      * The scene's duration, in seconds
@@ -681,31 +961,57 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
      */
     base.validateOptions = function() {
         if (base.type === "AUTO") {
-            if (!base.origin) {
-                throw "An origin must be specified";
-            } else if (base.origin !== null && typeof base.origin === "object") {
-                if (typeof base.origin.lat === "undefined" || !base.origin.lat.length) {
+            if (typeof base.origin === "string") {
+                if (!base.origin.length) {
+                    base.warn(typeof base.origin, base.origin);
+                    throw "An origin must be specified";
+                }
+            } else if (typeof base.origin === "object" && base.origin !== null) {
+                base.origin.lat = parseFloat(base.origin.lat, 10) || 0;
+                if (!base.origin.lng) {
+                    base.warn(typeof base.origin, base.origin);
                     throw "If origin is supplied as an object, the lat property cannot be empty";
                 }
-                if (typeof base.origin.lng === "undefined" || !base.origin.lng.length) {
+                base.origin.lng = parseFloat(base.origin.lng, 10) || 0;
+                if (!base.origin.lng) {
+                    base.warn(typeof base.origin, base.origin);
                     throw "If origin is supplied as an object, the lng property cannot be empty";
                 }
+            } else {
+                base.warn(typeof base.origin, base.origin);
+                throw "Invalid data type for origin, or origin missing; valid data types are string or object literal";
             }
-            if (!base.destination) {
-                throw "An destination must be specified";
-            } else if (base.destination !== null && typeof base.destination === "object") {
-                if (typeof base.destination.lat === "undefined" || !base.destination.lat.length) {
+            // --------------------------------------------------------------------------
+            if (typeof base.destination === "string") {
+                if (!base.destination.length) {
+                    base.warn(typeof base.destination, base.destination);
+                    throw "An destination must be specified";
+                }
+            } else if (typeof base.destination === "object" && base.destination !== null) {
+                base.destination.lat = parseFloat(base.destination.lat, 10) || 0;
+                if (!base.destination.lng) {
+                    base.warn(typeof base.destination, base.destination);
                     throw "If destination is supplied as an object, the lat property cannot be empty";
                 }
-                if (typeof base.destination.lng === "undefined" || !base.destination.lng.length) {
+                base.destination.lng = parseFloat(base.destination.lng, 10) || 0;
+                if (!base.destination.lng) {
+                    base.warn(typeof base.destination, base.destination);
                     throw "If destination is supplied as an object, the lng property cannot be empty";
                 }
+            } else {
+                base.warn(typeof base.destination, base.destination);
+                throw "Invalid data type for destination, or destination missing; valid data types are string or object literal";
             }
-            if (base.target !== null && typeof base.target === "object") {
-                if (typeof base.target.lat === "undefined" || !base.target.lat.length) {
+            // --------------------------------------------------------------------------
+            if (typeof base.target === "object" && base.target !== null) {
+                base.target.lat = parseFloat(base.target.lat, 10) || 0;
+                if (!base.target.lng) {
+                    base.warn(typeof base.target, base.target);
                     throw "If target is supplied as an object, the lat property cannot be empty";
                 }
-                if (typeof base.target.lng === "undefined" || !base.target.lng.length) {
+                base.target.lng = parseFloat(base.target.lng, 10) || 0;
+                if (!base.target.lng) {
+                    base.warn(typeof base.target, base.target);
                     throw "If target is supplied as an object, the lng property cannot be empty";
                 }
             }
@@ -716,6 +1022,24 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
         } else {
             throw 'Invalid scene type "' + base.type + '"';
         }
+        // --------------------------------------------------------------------------
+        /**
+         * If the origin, destination or target are strings and are lat/lng coordinates
+         * (i.e., in the format Number,Number) then translate them into an object.
+         */
+        var properties = [ "origin", "destination", "target" ];
+        var regex = /^-?\d+(\.\d+),-?\d+(\.\d+)$/;
+        var bits = null;
+        for (var i = properties.length - 1; i >= 0; i--) {
+            if (typeof base[properties[i]] === "string" && regex.test(base[properties[i]])) {
+                bits = base[properties[i]].split(",");
+                base[properties[i]] = {
+                    lat: parseFloat(bits[0], 10),
+                    lng: parseFloat(bits[1], 10)
+                };
+            }
+        }
+        // --------------------------------------------------------------------------
         return base;
     };
     // --------------------------------------------------------------------------
@@ -725,19 +1049,178 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
      */
     base.generate = function() {
         var deferred = new $.Deferred();
-        if (!base.requiresGeneration()) {
+        if (base.type === "MANUAL" || !base.requiresGeneration()) {
             base.log("Generation not required");
             deferred.resolve();
         } else {
             //  Begin generation
             base.log("Requires generation");
             base.log("Beginning generation");
-            base.log("Completed generation");
-            base.frames = [ "http://lorempixel.com/600/338/people", "http://lorempixel.com/600/338/abstract", "http://lorempixel.com/600/338/animals", "http://lorempixel.com/600/338/food" ];
-            base.generated = true;
-            deferred.resolve();
+            //  Reset frame stack
+            base.frames = [];
+            /**
+             * Here is where the magic happens. We need to generate our frames
+             * based on the supplied location data.
+             *
+             * 1. Work out the route between the origin and the destination
+             * 2. Pick out the right number of points/steps to satisfy the
+             *    duration of the scene.
+             * 3. Process each point, generating the streetview URL and save
+             *    to the frame stack.
+             * 4. Resolve the process so the generator can continue
+             */
+            //  Geocode anything which needs geocoded
+            base.geocodePoints(deferred).done(function() {
+                //  Everything has been geocoded, now get directions
+                base.log("Getting directions between origin and destination");
+                base.movie.router.getDirections(base.origin, base.destination, base.travelMode).done(function(data) {
+                    //  Process the waypoints, only do enough to satisfy the scene duration
+                    var maxFrames = base.movie.player.options.frameRate * base.duration;
+                    base.log(base.movie.player.options.frameRate, base.duration);
+                    for (var points = [], i = 0, s = data.routes[0].legs.length; s > i; i++) {
+                        for (var r = 0, u = data.routes[0].legs[i].steps.length; u > r; r++) {
+                            for (var d = 0, g = data.routes[0].legs[i].steps[r].lat_lngs.length; g > d; d++) {
+                                if (points.length < maxFrames) {
+                                    points.push(data.routes[0].legs[i].steps[r].lat_lngs[d]);
+                                }
+                            }
+                        }
+                    }
+                    base.log("Successfully extracted " + points.length + " waypoints");
+                    base.log("Processing waypoints");
+                    var logPrefix, heading, url, targetObj;
+                    if (base.target !== null) {
+                        targetObj = new window.google.maps.LatLng(base.target.lat, base.target.lng);
+                    }
+                    for (var i = 0; i < points.length; i++) {
+                        logPrefix = "Waypoint " + i + " (" + points[i].lat() + ", " + points[i].lng() + "): ";
+                        if (typeof points[i + 1] !== "undefined") {
+                            base.log(logPrefix + "Determining heading");
+                            /**
+                             * If a target is deifned, look at it, otherwise look at the next
+                             * way point.
+                             */
+                            if (base.target !== null) {
+                                heading = base.movie.router.computeHeading(points[i], targetObj);
+                            } else {
+                                heading = base.movie.router.computeHeading(points[i], points[i + 1]);
+                            }
+                            base.log(logPrefix + "Generating StreetView URL");
+                            url = base.generateStreetViewUrl(points[i].lat(), points[i].lng(), heading);
+                        } else {
+                            //  Last frame
+                            base.log(logPrefix + "Last frame");
+                            base.log(logPrefix + "Determining heading");
+                            /**
+                             * If a target is deifned, look at it, otherwise look in the same
+                             * direction as the previous waypoint.
+                             */
+                            if (base.target !== null) {
+                                heading = base.movie.router.computeHeading(points[i], targetObj);
+                            } else {
+                                heading = heading;
+                            }
+                            base.log(logPrefix + "Generating StreetView URL");
+                            url = base.generateStreetViewUrl(points[i].lat(), points[i].lng(), heading);
+                        }
+                        base.log(logPrefix + "Saving frame to stack");
+                        base.frames.push(url);
+                    }
+                    base.log("Finished processing waypoints");
+                    //  Resolve the request
+                    base.log("Completed generation");
+                    base.generated = true;
+                    deferred.resolve();
+                }).fail(function(data) {
+                    /**
+                     * Set this to true so that the main generation loop doesn't get
+                     * stuck in an infinite loop
+                     */
+                    base.generated = true;
+                    //  Reject the promise
+                    deferred.reject({
+                        error: data.error
+                    });
+                });
+            }).fail(function() {
+                /**
+                 * Set this to true so that the main generation loop doesn't get
+                 * stuck in an infinite loop
+                 */
+                base.generated = true;
+                //  Reject the promise
+                deferred.reject({
+                    error: "Failed to geocode points"
+                });
+            });
         }
         return deferred.promise();
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Compile the streetview URL
+     * @param  {Number} lat     The camera's latitude
+     * @param  {Number} lng     The camera's longitude
+     * @param  {Number} heading The camera's heading
+     * @return {String}
+     */
+    base.generateStreetViewUrl = function(lat, lng, heading) {
+        var url;
+        url = "http://maps.googleapis.com/maps/api/streetview?";
+        url += "size=" + base.movie.options.frameWidth + "x" + base.movie.options.frameHeight;
+        url += "&location=" + lat + "," + lng;
+        url += "&heading=" + heading;
+        url += "&pitch=-1.62";
+        url += "&sensor=false";
+        url += "&key=" + base.movie.router.apiKey;
+        if (!$.trim(base.movie.router.apiKey).length) {
+            base.warn("Missing API key, StreetView imagery will fail");
+        }
+        return url;
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Loops through the origin,destination and target and geocodes them if they
+     * are not already geocoded.
+     * @return {Object} A jQuery promise
+     */
+    base.geocodePoints = function() {
+        base.log("Geocoding origin/destination/target");
+        var geocodeDeferred = new $.Deferred();
+        base.doGeocodePoints(geocodeDeferred);
+        return geocodeDeferred.promise();
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Checks all the lat/lng points are geocoded
+     * @return {Void}
+     */
+    base.doGeocodePoints = function(geocodeDeferred) {
+        var check = {
+            origin: base.origin,
+            destination: base.destination,
+            target: base.target
+        };
+        var toGeocode = null;
+        for (var key in check) {
+            if (typeof check[key] === "string") {
+                toGeocode = key;
+                break;
+            }
+        }
+        if (toGeocode !== null) {
+            base.movie.router.getCoordinatesFromAddress(check[key]).done(function(data) {
+                base[toGeocode] = data;
+                base.doGeocodePoints(geocodeDeferred);
+            }).fail(function(data) {
+                geocodeDeferred.reject({
+                    error: data.error
+                });
+            });
+        } else {
+            //  Nothing requires geocoding, resolve the request
+            geocodeDeferred.resolve();
+        }
     };
     // --------------------------------------------------------------------------
     /**
@@ -780,6 +1263,16 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
      */
     base.log = function() {
         $SVA.debug.log("SVA [Scene:" + base.getId() + "]:", arguments);
+        return base;
+    };
+    // --------------------------------------------------------------------------
+    /**
+     * Sends an item to the warn log, prefixing it with a string so that the class
+     * making the log is easily identifiable
+     * @return {Object}
+     */
+    base.warn = function() {
+        $SVA.debug.warn("SVA [Scene:" + base.getId() + "]:", arguments);
         return base;
     };
     // --------------------------------------------------------------------------
