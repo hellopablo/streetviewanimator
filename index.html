@@ -1,93 +1,827 @@
 <!DOCTYPE html>
-<!--[if lt IE 7 ]><html class="ie ie6" lang="en"> <![endif]-->
-<!--[if IE 7 ]><html class="ie ie7" lang="en"> <![endif]-->
-<!--[if IE 8 ]><html class="ie ie8" lang="en"> <![endif]-->
-<!--[if (gte IE 9)|!(IE)]><!--><html lang="en"> <!--<![endif]-->
-    <head>
-        <title>StreetView Animator - A tool for creating Street View animations, easily</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta charset="utf-8">
-        <style type="text/css">
+<html>
+<head>
+    <title>StreetView Animator: Demo</title>
+    <link rel="shortcut icon" href="assets/img/icon.png">
+    <style type="text/css">
+        /* http://meyerweb.com/eric/tools/css/reset/
+           v2.0 | 20110126
+           License: none (public domain)
+        */
 
-            html,
-            body {
-                -ms-text-size-adjust: 100%;
-                -webkit-text-size-adjust: 100%;
-                color: #333;
-                overflow: hidden;
-                font-family: "Helvetica Neue", Helvetica, "Segoe UI", Arial, freesans, sans-serif;
-                font-size: 16px;
-                line-height: 1.6em;
-            }
+        html, body, div, span, applet, object, iframe,
+        h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+        a, abbr, acronym, address, big, cite, code,
+        del, dfn, em, img, ins, kbd, q, s, samp,
+        small, strike, strong, sub, sup, tt, var,
+        b, u, i, center,
+        dl, dt, dd, ol, ul, li,
+        fieldset, form, label, legend,
+        table, caption, tbody, tfoot, thead, tr, th, td,
+        article, aside, canvas, details, embed,
+        figure, figcaption, footer, header, hgroup,
+        menu, nav, output, ruby, section, summary,
+        time, mark, audio, video {
+            margin: 0;
+            padding: 0;
+            border: 0;
+            font-size: 100%;
+            font: inherit;
+            vertical-align: baseline;
+        }
+        /* HTML5 display-role reset for older browsers */
+        article, aside, details, figcaption, figure,
+        footer, header, hgroup, menu, nav, section {
+            display: block;
+        }
+        body {
+            line-height: 1;
+        }
+        ol, ul {
+            list-style: none;
+        }
+        blockquote, q {
+            quotes: none;
+        }
+        blockquote:before, blockquote:after,
+        q:before, q:after {
+            content: '';
+            content: none;
+        }
+        table {
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
 
-            #container {
-                word-wrap: break-word;
-                max-width: 600px;
-                min-width: 200px;
-                margin: 0 auto;
-                padding: 30px;
-                text-align: center;
-            }
+        /*
+            Page styles
+         */
+        html,
+        body {
+            font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+            font-weight: 300;
+            font-size: 14px;
+            -webkit-font-smoothing: antialiased;
+            margin: 0;
+            padding: 0;
+        }
+        #intro,
+        #player,
+        #controls-movie,
+        #controls-player,
+        #meta,
+        #global-config,
+        #scenes {
+            border:1px solid #CCC;
+            margin: 1em auto;
+            width: 580px;
+            padding: 10px;
+        }
+        #meta > p,
+        #global-config > p,
+        #scenes > p
+        {
+            padding-left: 0.25em;
+            padding-bottom: 0.8em;
+            margin-bottom: 0.8em;
+            font-size: 0.8em;
+            font-weight: bold;
+            border-bottom: 1px solid #EFEFEF;
+        }
+        #intro {
+            text-align: center;
+            border: none;
+            font-size: 2em;
+            font-weight: bold;
+        }
+        #intro,
+        #sub-intro {
+            text-align: center;
+            border: none;
+            font-size: 2em;
+            font-weight: bold;
+        }
+        #sub-intro {
+            font-size: 1em;
+            font-weight: normal;
+            margin-bottom: 3em;
+            line-height: 1.75em;
+        }
+        #intro img {
+            width: 50px;
+            height: 50px;
+            vertical-align: middle;
+            position: relative;
+            top:-3px;
+            left:-10px;
+        }
+        #intro small {
+            font-weight: normal;
+            color: #CCC;
+        }
+        #player {
+            width: 600px;
+            height: 338px;
+            padding: 0;
+            position: relative;
+            border-radius: 3px;
+            overflow: hidden;
+            box-shadow: 0px 0px 5px rgba(0,0,0,0.3);
+        }
+        #player .buffering,
+        #player .generating {
+            display: none;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height:100%;
+            background-color: rgba(255,255,255,0.7);
+            background-repeat: no-repeat;
+            background-position: center;
+            background-image: url(assets/img/buffering.gif);
+            background-size: 32px;
+        }
+        #player.buffering .buffering,
+        #player.generating .generating {
+            display: block;
+        }
+        #player .buffering .text,
+        #player .generating .text {
+            text-align: center;
+            display: block;
+            position: relative;
+            top: 50%;
+            margin-top: 95px;
+            font-size: 1.25em;
+            background: rgba(0,0,0,0.1);
+            padding: 0.6em;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: rgba(0,0,0,0.5);
+            text-shadow: 0px 0px 3px rgba(255,255,255,1);
+        }
+        #player .canvas {
+            width: 100%;
+            height:100%;
+            background: #FFF2D1;
+            background-image: url(assets/img/coverImg.png);
+            background-size: cover;
+            cursor: pointer;
+        }
+        #player .scrubber {
+            position: absolute;
+            left: 1em;
+            right: 1em;
+            bottom: 0.8em;
+            height: 0.5em;
+            background: rgba(255, 255, 255, 0.3);
+            border: 1px solid #FFF;
+            border-radius: 0.15em;
+            overflow: hidden;
+            box-shadow: 0px 1px 2px rgba(0,0,0,0.3);
+        }
+        #player .scrubber .loaded,
+        #player .scrubber .current {
+            height: 100%;
+            width: 0;
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        #player .scrubber .loaded {
+            background: rgba(255, 255, 255, 0.65);
+        }
+        #player .scrubber .current {
+            background: rgba(255, 255, 255, 1);
+        }
+        #controls-movie span,
+        #controls-player span {
+            float: left;
+            color: #888;
+            display: block;
+            width: 50px;
+        }
+        table {
+            width: 100%;
+        }
+        table td {
+            padding: 1em;
+            border-bottom: 1px solid #EFEFEF;
+        }
+        table tr:last-of-type td {
+            border-bottom: none;
+        }
+        table td.label {
+            width: 150px;
+            background: #EFEFEF;
+        }
+        table td.input {
+            padding: 0.5em;
+        }
+        table td.input input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 0.25em;
+        }
+        #scenes {
+            margin-bottom: 3em;
+        }
+        #scenes li {
 
-            h1 {
-                position: relative;
-                margin: 0.67em 0;
-                margin-top: 1em;
-                margin-bottom: 16px;
-                padding-bottom: 0.3em;
-                font-size: 2.25em;
-                font-weight: bold;
-                line-height: 1.2;
-                border-bottom: 1px solid #eee;
-            }
-
-            img {
-                border: 0;
-                max-width: 100%;
-                -moz-box-sizing: border-box;
-                box-sizing: border-box;
-            }
-
-            p {
-                margin-top: 0;
-                margin-bottom: 16px;
-            }
-
-            a {
-                background: transparent;
-                color: #4183C4;
-                text-decoration: none;
-            }
-
-            a:active,
-            a:hover {
-                outline: 0;
-            }
-
-            a:hover,
-            a:focus,
-            a:active {
-                text-decoration: underline;
-            }
-
-        </style>
-    </head>
-    <body>
-        <div id="container">
-            <h1>
-                StreetView Animator
-            </h1>
-            <p>
-                A simple tool for easily creating Google Street View frame based animations.
-            </p>
-            <p>
-                Demo website is @todo.
-            </p>
-            <p>
-                <a href="https://github.com/hellopablo/streetviewanimator">
-                    GitHub Repo
-                </a>
-            </p>
+            border: 1px dashed #CCC;
+            padding: 1em;
+            margin-bottom: 1em;
+        }
+        #scenes li label {
+            margin-right: 1em;
+        }
+        #scenes li button {
+            float: right;
+        }
+        #scenes li p {
+            padding-bottom: 1em;
+        }
+        #scenes li small {
+            font-size: 0.75em;
+        }
+        #scenes li .auto,
+        #scenes li .manual {
+            display: none;
+        }
+        #scenes li .auto label {
+            border: 1px solid #CCC;
+            box-sizing: border-box;
+            margin-right: 0px;
+            width: 49%;
+            padding: 0.5em;
+            display: inline-block;
+            position: relative;
+        }
+        #scenes li .auto p:last-of-type {
+            padding-bottom: 0;
+        }
+        #scenes li .auto label:last-of-type {
+            float: right;
+        }
+        #scenes li .auto label:first-of-type {
+            float: none;
+        }
+        #scenes li .auto label input {
+            position: absolute;
+            width: 100%;
+            left: 0;
+            top: 0;
+            box-sizing: border-box;
+            height: 100%;
+            background: transparent;
+            padding-left: 100px;
+            padding-right: 1em;
+            border: 0;
+            text-align: right;
+        }
+        #scenes li .manual textarea {
+            width: 100%;
+            height: 150px;
+            box-sizing: border-box;
+            padding: 1em;
+            border: 1px solid #CCC;
+        }
+        #scenes li.add-scene {
+            border: none;
+            padding: 0;
+            margin-bottom: 0;
+        }
+        #scenes li.add-scene button {
+            width: 100%;
+            float: none;
+        }
+        button.disabled {
+            opacity: 0.25;
+        }
+    </style>
+</head>
+<body>
+    <div id="intro">
+        <img src="assets/img/icon.png">
+        StreetView Animator <small>Demo</small>
+    </div>
+    <div id="sub-intro">
+        <p>
+            Source code and docs available on <a href="http://github.com/hellopablo/streetviewanimator">GitHub</a>.
+        </p>
+    </div>
+    <div id="player">
+        <div class="canvas"></div>
+        <div class="buffering">
+            <span class="text">Buffering</span>
         </div>
-    </body>
+        <div class="generating">
+            <span class="text">Generating Route</span>
+        </div>
+        <div class="scrubber">
+            <div class="loaded"></div>
+            <div class="current"></div>
+        </div>
+    </div>
+    <div id="controls-movie">
+        <span>Movie:</span>
+        <button class="action" data-action="generate">
+            Generate Movie
+        </button>
+        <button class="action" data-action="reset">
+            Reset Movie
+        </button>
+    </div>
+    <div id="controls-player">
+        <span>Player:</span>
+        <button class="action" data-action="play">
+            Play
+        </button>
+        <button class="action" data-action="stop">
+            Stop
+        </button>
+    </div>
+    <div id="meta">
+        <p>
+            Meta
+        </p>
+        <table>
+            <tbody>
+                <tr>
+                    <td class="label">Number of Scenes</td>
+                    <td class="value" id="meta-num-scenes">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Number of Frames</td>
+                    <td class="value" id="meta-num-frames">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Requires Generation</td>
+                    <td class="value" id="meta-requires-generation">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Current Scene</td>
+                    <td class="value" id="meta-current-scene">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Current Frame</td>
+                    <td class="value" id="meta-current-frame">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Loaded Frames</td>
+                    <td class="value" id="meta-loaded-frames">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Player state</td>
+                    <td class="value" id="meta-player-state">
+                        undefined
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Loader state</td>
+                    <td class="value" id="meta-loader-state">
+                        undefined
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="global-config">
+        <p>
+            Global Settings
+        </p>
+        <table>
+            <tbody>
+                <tr>
+                    <td class="label">Frame Width</td>
+                    <td class="input">
+                        <input type="text" id="param-frame-width" value="600" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Frame Height</td>
+                    <td class="input">
+                        <input type="text" id="param-frame-height" value="338" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Frame Rate</td>
+                    <td class="input">
+                        <input type="text" id="param-frame-rate" value="12" />
+                    </td>
+                </tr>
+                <tr>
+                    <td class="label">Google Maps API Key</td>
+                    <td class="input">
+                        <input type="text" id="param-api-key" value="AIzaSyBKOC2VpSHJZC-52OROCi2Uxb7YQB34IDM" />
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div id="scenes">
+        <p>
+            Scenes
+        </p>
+        <ul>
+            <li class="add-scene">
+                <button class="action" data-action="add-scene">
+                    Add Scene
+                </a>
+            </li>
+        </ul>
+    </div>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.1.2/mustache.min.js"></script>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=geometry"></script>
+    <script type="text/javascript" src="assets/js/frameplayer.min.js"></script>
+    <script type="text/javascript" src="assets/js/streetviewanimator.min.js"></script>
+    <script type="text/javascript" src="assets/js/scenes.js"></script>
+    <script type="text/x-template" id="template-add-scene">
+        <li class="scene-config">
+            <p>
+                Type:
+                <label>
+                    <input type="radio" class="param-type" value="AUTO" {{#isAuto}}checked="checked"{{/isAuto}} />
+                    Auto
+                </label>
+                <label>
+                    <input type="radio" class="param-type" value="MANUAL" {{#isManual}}checked="checked"{{/isManual}}/>
+                    Manual
+                    <small>
+                        (Generated using <a href="http://hellopablo.github.io/streetviewplotter" target="_blank">StreetView Plotter</a>)
+                    </small>
+                </label>
+                <button class="action" data-action="remove-scene">
+                    Remove
+                </button>
+            </p>
+
+            <div class="auto" {{#isAuto}}style="display: block"{{/isAuto}}>
+                <p>
+                    <label>
+                        Origin:
+                        <input class="param-origin" type="text" value="{{origin}}" />
+                    </label>
+                    <label>
+                        Destination:
+                        <input class="param-destination" type="text" value="{{destination}}" />
+                    </label>
+                </p>
+                <p>
+                    <label>
+                        Target:
+                        <input class="param-target" type="text" value="{{target}}" placeholder="Optional" />
+                    </label>
+                    <label>
+                        Duration:
+                        <input class="param-duration" type="text" value="{{duration}}" placeholder="Optional" />
+                    </label>
+                </p>
+                <p>
+                    <label>
+                        Pitch:
+                        <input class="param-pitch" type="text" value="{{pitch}}" placeholder="Optional" />
+                    </label>
+                    <label>
+                        FOV:
+                        <input class="param-fov" type="text" value="{{fov}}" placeholder="Optional" />
+                    </label>
+                </p>
+            </div>
+
+            <div class="manual" {{#isManual}}style="display: block"{{/isManual}}>
+                <textarea placeholder="Paste a manual config object here" class="param-frames">{{framesAsJson}}</textarea>
+            </div>
+        </li>
+    </script>
+    <script type="text/javascript">
+
+        var sva = new window.streetviewanimator.movie({
+            'debug': true,
+            'playerDebug': true,
+            'router': {
+                'apiKey': null
+            },
+            // 'scenes': window.demo,
+            'player': {
+                'domElement': '#player'
+            },
+            'onReady': function() {
+
+                window.SVA.debug.log('EVENT: onReady');
+                $('#meta-num-frames').text(this.getNumFrames());
+                $('#meta-num-scenes').text(this.getNumScenes());
+                $('#meta-requires-generation').text(this.requiresGeneration());
+            },
+            'onReset': function() {
+
+                window.SVA.debug.log('EVENT: onReset');
+                $('#meta-num-frames').text(this.getNumFrames());
+                $('#meta-num-scenes').text(this.getNumScenes());
+                $('#meta-requires-generation').text(this.requiresGeneration());
+            },
+            'onSceneCreate': function() {
+
+                window.SVA.debug.log('EVENT: onSceneCreate');
+                $('#meta-num-frames').text(this.getNumFrames());
+                $('#meta-num-scenes').text(this.getNumScenes());
+            },
+            'onSceneUpdate': function() {
+
+                window.SVA.debug.log('EVENT: onSceneUpdate');
+                $('#meta-num-frames').text(this.getNumFrames());
+                $('#meta-num-scenes').text(this.getNumScenes());
+            },
+            'onSceneDestroy': function() {
+
+                window.SVA.debug.log('EVENT: onSceneDestroy');
+                $('#meta-num-frames').text(this.getNumFrames());
+                $('#meta-num-scenes').text(this.getNumScenes());
+            },
+            'onGenerateStart': function() {
+
+                window.SVA.debug.log('EVENT: onGenerateStart');
+                $('#meta-num-frames').text(this.getNumFrames());
+                $('#meta-requires-generation').text(this.requiresGeneration());
+            },
+            'onGenerateEnd': function() {
+
+                window.SVA.debug.log('EVENT: onGenerateEnd');
+                $('#meta-num-frames').text(this.getNumFrames());
+                $('#meta-requires-generation').text(this.requiresGeneration());
+            },
+            'onPlayerReady': function() {
+
+                $('#meta-player-state').text(this.getPlayerState());
+                $('#meta-loader-state').text(this.getLoaderState());
+            },
+            'onPlayerLoadStart': function() {
+
+                window.FP.debug.log('EVENT: onPlayerLoadStart');
+                $('#meta-loader-state').text(this.getLoaderState());
+            },
+            'onPlayerLoadStop': function() {
+
+                window.FP.debug.log('EVENT: onPlayerLoadStop');
+                $('#meta-loader-state').text(this.getLoaderState());
+            },
+            'onPlayerLoadProgress': function(loadedFrames, totalFrames, percentLoaded) {
+                window.FP.debug.log('EVENT: onPlayerLoadProgress', loadedFrames, totalFrames, percentLoaded);
+                $('#meta-loaded-frames').text(loadedFrames + ' / ' + percentLoaded + '%');
+            },
+            'onPlayerLoadComplete': function() {
+                window.FP.debug.log('EVENT: onPlayerLoadComplete');
+                $('#meta-loader-state').text(this.getLoaderState());
+            },
+            'onPlayerPlay': function() {
+
+                window.FP.debug.log('EVENT: onPlayerPlay');
+                $('#meta-player-state').text(this.getPlayerState());
+                $('#meta-loader-state').text(this.getLoaderState());
+            },
+            'onPlayerBufferStart': function() {
+
+                window.FP.debug.log('EVENT: onPlayerBufferStart');
+                $('#meta-player-state').text(this.getPlayerState());
+                $('#meta-loader-state').text(this.getLoaderState());
+            },
+            'onPlayerBufferStop': function() {
+
+                window.FP.debug.log('EVENT: onPlayerBufferStop');
+                $('#meta-player-state').text(this.getPlayerState());
+                $('#meta-loader-state').text(this.getLoaderState());
+            },
+            'onPlayerStop': function() {
+
+                window.FP.debug.log('EVENT: onPlayerStop');
+                $('#meta-player-state').text(this.getPlayerState());
+                $('#meta-loader-state').text(this.getLoaderState());
+            },
+            'onPlayerEnterFrame': function(frameNumber) {
+
+                window.FP.debug.log('EVENT: onPlayerEnterFrame', frameNumber);
+                $('#meta-current-frame').text(this.getCurrentFrame());
+            },
+            'onPlayerExitFrame': function(frameNumber) {
+
+                window.FP.debug.log('EVENT: onPlayerExitFrame', frameNumber);
+            },
+            'onPlayerLoop': function() {
+
+                window.FP.debug.log('EVENT: onPlayerLoop');
+            },
+            'onPlayerReset': function() {
+
+                window.FP.debug.log('EVENT: onPlayerReset');
+            },
+            'onPlayerEnterScene': function(scene) {
+
+                window.SVA.debug.log('EVENT: onPlayerEnterScene ' + scene.getId());
+                $('#meta-current-scene').text(scene.getId());
+            },
+            'onPlayerExitScene': function(scene) {
+
+                window.SVA.debug.log('EVENT: onPlayerExitScene ' + scene.getId());
+                $('#meta-current-scene').text(scene.getId());
+            }
+        });
+
+        //  Bind to buttons
+        $(document).on('click', 'button.action', function() {
+
+            var action = $(this).data('action');
+            if (!$(this).hasClass('disabled')) {
+
+                switch (action) {
+
+                    case 'generate':
+                        movieGenerate(false);
+                        break;
+
+                    case 'reset':
+                        movieReset();
+                        break;
+
+                    case 'add-scene':
+                        addScene();
+                        break;
+
+                    case 'remove-scene':
+                        removeScene($(this));
+                        break;
+
+                    case 'play':
+
+                        playerPlay();
+                        break;
+
+                    case 'stop':
+
+                        playerStop();
+                        break;
+                }
+            }
+        });
+
+        //  Button functions
+        function movieGenerate(play) {
+
+            sva.reset();
+
+            //  Set the global parameters
+            sva.setFrameRate($('#param-frame-rate').val());
+            sva.setFrameSize($('#param-frame-width').val(), $('#param-frame-height').val());
+            sva.setApiKey($('#param-api-key').val());
+
+            //  Add each of the configured scenes
+            $('#scenes li.scene-config').each(function(index, element) {
+
+                var scene = {
+                    'id': 'scene-' + (index+1),
+                    'type': $(element).find('.param-type:checked').val() || 'AUTO',
+                    'origin': $(element).find('.param-origin').val() || null,
+                    'destination': $(element).find('.param-destination').val() || null,
+                    'target': $(element).find('.param-target').val() || null,
+                    'duration': parseInt($(element).find('.param-duration').val(), 10) || null,
+                    'pitch': parseInt($(element).find('.param-pitch').val(), 10) || null,
+                    'fov': parseInt($(element).find('.param-fov').val(), 10) || null,
+                    'frames': $(element).find('.param-frames').val() || []
+                };
+
+                if (typeof scene.frames === 'string' && scene.frames.length) {
+
+                    try {
+                        scene.frames = JSON.parse(scene.frames);
+                    } catch (err) {
+                        window.SVA.debug.error('Failed to parse manual config for scene at index ' + index);
+                        window.SVA.debug.warn('Skipping scene at index ' + index + ' due to errors');
+                        return;
+                    }
+                }
+
+                //  Add the scene to the movie
+                sva.scene(scene.id, scene);
+            });
+
+            sva.generate()
+            .done(function() {
+                if (play) {
+                    sva.play();
+                }
+            });
+        }
+
+        function movieReset() {
+
+            sva.reset();
+        }
+
+        function addScene() {
+
+            var html = $('#template-add-scene').html();
+
+            //  Run through Mustache to remove template placeholders
+            html = Mustache.render(html, {'isAuto': true});
+
+            $('#scenes').find('li.add-scene').before(html);
+        }
+
+        function removeScene(elem) {
+
+            elem.closest('li').remove();
+        }
+
+        function playerPlay() {
+
+            sva.play();
+        }
+
+        function playerStop() {
+
+            sva.stop();
+        }
+
+        //  Bind to scene type selector
+        $('#scenes').on('click', 'input.param-type', function(e) {
+
+            $(this).closest('p').find('.param-type').prop('checked', false);
+            $(this).prop('checked', true);
+
+            if ($(this).val() === 'AUTO') {
+
+                $(this).closest('li').find('.auto').show();
+                $(this).closest('li').find('.manual').hide();
+
+            } else {
+
+                $(this).closest('li').find('.auto').hide();
+                $(this).closest('li').find('.manual').show();
+            }
+        });
+
+        //  Build the interface from the demo scenes
+        var tplAddScene = $('#template-add-scene').html();
+        $(window.demo).each(function(index, element) {
+
+            var tplData = element;
+
+            if (tplData.type === 'AUTO') {
+
+                tplData.isAuto = true;
+                tplData.isManual = false;
+                tplData.framesAsJson = null;
+
+            } else if (tplData.type === 'MANUAL') {
+
+                tplData.isAuto = false;
+                tplData.isManual = true;
+                tplData.framesAsJson = JSON.stringify(tplData.frames, null, "\t");
+            }
+
+            if (typeof tplData.origin === 'object') {
+                tplData.origin = tplData.origin.lat + ',' + tplData.origin.lng;
+            }
+
+            if (typeof tplData.destination === 'object') {
+                tplData.destination = tplData.destination.lat + ',' + tplData.destination.lng;
+            }
+
+            if (typeof tplData.target === 'object') {
+                tplData.target = tplData.target.lat + ',' + tplData.target.lng;
+            }
+
+            var tpl = Mustache.render(tplAddScene, tplData);
+
+            $('#scenes li.add-scene').before(tpl);
+
+        });
+
+        //  Bind to canvas
+        $('#player .canvas').on('click', function() {
+
+            if (sva.player.getPlayerState() === 'STOPPED' && sva.requiresGeneration()) {
+                movieGenerate(true);
+            } else if (sva.player.getPlayerState() === 'STOPPED' && !sva.requiresGeneration()) {
+                playerPlay();
+            } else {
+                sva.stop();
+            }
+        });
+
+    </script>
+</body>
 </html>
