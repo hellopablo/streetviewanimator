@@ -36,8 +36,7 @@ window.streetviewanimator.movie = function(options) {
         'frameHeight': 338,
         'player': {
             'frameRate': 12,
-            'domElement': null,
-            'mode': 'background'
+            'domElement': null
         },
         'scenes':[],
 
@@ -160,6 +159,9 @@ window.streetviewanimator.movie = function(options) {
 
         } else {
 
+            base.options.player.playerWidth = base.options.frameWidth;
+            base.options.player.playerHeight = base.options.frameHeight;
+
             base.options.player.onReady = function() {
                 base.options.onPlayerReady.call(this);
             };
@@ -201,6 +203,7 @@ window.streetviewanimator.movie = function(options) {
             base.options.player.onReset = function()  {
                 base.options.onPlayerReset.call(this);
             };
+
             base.player = new window.frameplayer.player(base.options.player, base);
         }
 
@@ -599,6 +602,15 @@ window.streetviewanimator.movie = function(options) {
         base.log('Changing framesize from ' + base.options.frameWidth + 'x' + base.options.frameHeight + ' to ' + width + 'x' + height);
         base.options.frameWidth = parseInt(width, 10);
         base.options.frameHeight = parseInt(height, 10);
+        return base;
+    };
+
+    // --------------------------------------------------------------------------
+
+    base.setPlayerSize = function(width, height) {
+
+        base.log('Changing framesize from ' + base.options.frameWidth + 'x' + base.options.frameHeight + ' to ' + width + 'x' + height);
+        base.player.setPlayerSize(width, height);
         return base;
     };
 

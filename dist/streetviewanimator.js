@@ -165,8 +165,7 @@ window.streetviewanimator.movie = function(options) {
         frameHeight: 338,
         player: {
             frameRate: 12,
-            domElement: null,
-            mode: "background"
+            domElement: null
         },
         scenes: [],
         //  Events
@@ -260,6 +259,8 @@ window.streetviewanimator.movie = function(options) {
         if (typeof window.frameplayer === "undefined") {
             throw "Dependency FramePlayer is not available http://hellopablo.github.io/frameplayer";
         } else {
+            base.options.player.playerWidth = base.options.frameWidth;
+            base.options.player.playerHeight = base.options.frameHeight;
             base.options.player.onReady = function() {
                 base.options.onPlayerReady.call(this);
             };
@@ -592,6 +593,12 @@ window.streetviewanimator.movie = function(options) {
         base.log("Changing framesize from " + base.options.frameWidth + "x" + base.options.frameHeight + " to " + width + "x" + height);
         base.options.frameWidth = parseInt(width, 10);
         base.options.frameHeight = parseInt(height, 10);
+        return base;
+    };
+    // --------------------------------------------------------------------------
+    base.setPlayerSize = function(width, height) {
+        base.log("Changing framesize from " + base.options.frameWidth + "x" + base.options.frameHeight + " to " + width + "x" + height);
+        base.player.setPlayerSize(width, height);
         return base;
     };
     // --------------------------------------------------------------------------
