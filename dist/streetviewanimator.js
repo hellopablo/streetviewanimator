@@ -168,6 +168,7 @@ window.streetviewanimator.movie = function(options) {
             domElement: null
         },
         scenes: [],
+        streetviewUrl: "http://maps.googleapis.com/maps/api/streetview",
         //  Events
         onReady: function() {},
         onSceneCreate: function(scene) {},
@@ -1263,7 +1264,7 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
      */
     base.generateStreetViewUrl = function(lat, lng, heading) {
         var url;
-        url = "http://maps.googleapis.com/maps/api/streetview?";
+        url = base.movie.options.streetviewUrl + "?";
         url += "size=" + base.movie.options.frameWidth + "x" + base.movie.options.frameHeight;
         url += "&location=" + lat + "," + lng;
         url += "&heading=" + heading;
