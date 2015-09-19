@@ -48,10 +48,26 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
 
     /**
      * The scene's origin as either a string or a {lat:null,lng:null} object,
-     * required if type is set to AUTO
+     * required if type is set to AUTO or SWEEP
      * @type {Mixed}
      */
     base.origin = options.origin || null;
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * The scene's starting heading as an number required if type is set to SWEEP
+     * @type {Mixed}
+     */
+    base.startHeading = options.startHeading || 0;
+
+    // --------------------------------------------------------------------------
+
+    /**
+     * The scene's finish heading as an number required if type is set to SWEEP
+     * @type {Mixed}
+     */
+    base.finishHeading = options.finishHeading || 360;
 
     // --------------------------------------------------------------------------
 
@@ -295,6 +311,56 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
                 }
             }
 
+        } else if (base.type === 'SWEEP') {
+
+            if (typeof base.origin === 'string') {
+
+                if (!base.origin.length) {
+
+                    base.warn(typeof base.origin, base.origin);
+                    throw('An origin must be specified');
+                }
+
+            } else if (typeof base.origin === 'object' && base.origin !== null) {
+
+                base.origin.lat = parseFloat(base.origin.lat, 10) || 0;
+
+                if (!base.origin.lng) {
+
+                    base.warn(typeof base.origin, base.origin);
+                    throw('If origin is supplied as an object, the lat property cannot be empty');
+                }
+
+                base.origin.lng = parseFloat(base.origin.lng, 10) || 0;
+
+                if (!base.origin.lng) {
+
+                    base.warn(typeof base.origin, base.origin);
+                    throw('If origin is supplied as an object, the lng property cannot be empty');
+                }
+
+            } else {
+
+                base.warn(typeof base.origin, base.origin);
+                throw('Invalid data type for origin, or origin missing; valid data types are string or object literal');
+            }
+
+            if (base.finishHeading <= base.startHeading) {
+
+                base.warn(base.startHeading, base.finishHeading);
+                throw('finishHeading must be greater than startHeading');
+
+            } else if (base.finishHeading > 360) {
+
+                base.warn(base.finishHeading);
+                throw('finishHeading cannot be greater than 360');
+
+            } else if (base.startHeading < 0) {
+
+                base.warn(base.startHeading);
+                throw('startHeading cannot be less than 0');
+            }
+
         } else if (base.type === 'MANUAL') {
 
             if (!base.frames.length) {
@@ -348,7 +414,7 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
             base.log('Generation not required');
             deferred.resolve();
 
-        } else {
+        } else if (base.type === 'AUTO') {
 
             //  Begin generation
             base.log('Requires generation');
@@ -406,7 +472,7 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
                         );
                     }
 
-                    for (var i = 0; i < points.length; i++) {
+                    for (i = 0; i < points.length; i++) {
 
                         logPrefix = 'Waypoint ' + i + ' (' + points[i].lat() + ', ' + points[i].lng() + '): ';
 
@@ -477,6 +543,7 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
                         'error': data.error
                     });
                 });
+
             }).fail(function() {
 
                 /**
@@ -490,6 +557,72 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
                     'error': 'Failed to geocode points'
                 });
             });
+
+        } else if (base.type === 'SWEEP') {
+
+            //  Begin generation
+            base.log('Requires generation');
+            base.log('Beginning generation');
+
+            //  Reset frame stack
+            base.frames = [];
+
+            /**
+             * Here is where the magic happens. We need to generate our frames
+             * based on the supplied location data.
+             *
+             * 1.
+             */
+
+            //  Geocode anything which needs geocoded
+            base.geocodePoints(deferred)
+            .done(function() {
+
+                /**
+                 * Everything has been geocoded, now get frames around the origin.
+                 * the number of frames to get depends on the frame rate and the duration
+                 * of the scene.
+                 */
+
+                var numFrames = base.movie.player.options.frameRate * base.duration;
+                var interval = Math.ceil((base.finishHeading - base.startHeading)/numFrames);
+                var currentHeading = base.startHeading || 0;
+
+                base.log('Getting ' + numFrames + ' frames around the origin at ' + interval + ' intervals');
+                base.log('Starting at heading: ' + base.startHeading + ' and finishing at ' + base.finishHeading);
+
+                for (var i = 0; i < numFrames; i++) {
+
+                    //  Get the frame for the current heading
+                    base.log('Generating frame for heading: ' + currentHeading);
+                    url = base.generateStreetViewUrl(base.origin.lat, base.origin.lng, currentHeading);
+
+                    base.frames.push(url);
+
+                    //  Work out the next heading
+                    currentHeading += interval;
+                }
+
+                //  Resolve the request
+                base.log('Completed generation');
+                base.generated = true;
+                deferred.resolve();
+
+
+            }).fail(function() {
+
+                /**
+                 * Set this to true so that the main generation loop doesn't get
+                 * stuck in an infinite loop
+                 */
+                base.generated = true;
+
+                //  Reject the promise
+                deferred.reject({
+                    'error': 'Failed to geocode points'
+                });
+            });
+
         }
 
         return deferred.promise();
@@ -535,7 +668,7 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
         var geocodeDeferred = new $.Deferred();
         base.doGeocodePoints(geocodeDeferred);
         return geocodeDeferred.promise();
-    }
+    };
 
     // --------------------------------------------------------------------------
 
@@ -558,9 +691,9 @@ window.streetviewanimator.scene = function(sceneId, options, movieInstance) {
             if (typeof check[key] === 'string') {
 
                 toGeocode = key;
-                break
+                break;
             }
-        };
+        }
 
         if (toGeocode !== null) {
             base.movie.router.getCoordinatesFromAddress(check[key])

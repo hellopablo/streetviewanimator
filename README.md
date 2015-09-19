@@ -12,7 +12,7 @@ The easiest way to install streetveiwanimator.js is via [Bower](http://bower.io)
 
     bower install streetviewanimator
 
-Include the JS in your page, rememebring to include the dependencies: Google Maps and jQuery. Note that you will require an API key and also specify that we load the geometry library.
+Include the JS in your page, remembering to include the dependencies: Google Maps and jQuery. Note that you will require an API key and also specify that we load the geometry library.
 
     <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=geometry"></script>
     <script type="text/javascript" src="assets/bower_components/jquery/dist/jquery.min.js"></script>
