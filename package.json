@@ -2,8 +2,8 @@
   "name": "streeviewanimator",
   "description": "A simple tool for easily creating Google Street View frame based animations.",
   "license": "MIT",
-  "version": "1.1.0",
-  "author": "Pablo de la Peña <p@shedcollective.org>",
+  "version": "1.1.1",
+  "author": "Pablo de la Peña <pablo@hellopablo.co.uk>",
   "repository": {
     "type": "git",
     "url": "git://github.com/hellopablo/streetviewanimator.git"

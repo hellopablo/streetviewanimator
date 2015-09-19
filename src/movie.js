@@ -39,6 +39,7 @@ window.streetviewanimator.movie = function(options) {
             'domElement': null
         },
         'scenes':[],
+        'streetviewUrl': 'http://maps.googleapis.com/maps/api/streetview',
 
         //  Events
         'onReady': function() {},
