@@ -246,10 +246,12 @@
             font-size: 0.75em;
         }
         #scenes li .auto,
+        #scenes li .sweep,
         #scenes li .manual {
             display: none;
         }
-        #scenes li .auto label {
+        #scenes li .auto label,
+        #scenes li .sweep label {
             border: 1px solid #CCC;
             box-sizing: border-box;
             margin-right: 0px;
@@ -258,16 +260,20 @@
             display: inline-block;
             position: relative;
         }
-        #scenes li .auto p:last-of-type {
+        #scenes li .auto p:last-of-type,
+        #scenes li .sweep p:last-of-type {
             padding-bottom: 0;
         }
-        #scenes li .auto label:last-of-type {
+        #scenes li .auto label:last-of-type,
+        #scenes li .sweep label:last-of-type {
             float: right;
         }
-        #scenes li .auto label:first-of-type {
+        #scenes li .auto label:first-of-type,
+        #scenes li .sweep label:first-of-type {
             float: none;
         }
-        #scenes li .auto label input {
+        #scenes li .auto label input,
+        #scenes li .sweep label input {
             position: absolute;
             width: 100%;
             left: 0;
@@ -459,6 +465,10 @@
                     Auto
                 </label>
                 <label>
+                    <input type="radio" class="param-type" value="SWEEP" {{#isSweep}}checked="checked"{{/isSweep}} />
+                    Sweep
+                </label>
+                <label>
                     <input type="radio" class="param-type" value="MANUAL" {{#isManual}}checked="checked"{{/isManual}}/>
                     Manual
                     <small>
@@ -503,6 +513,29 @@
                 </p>
             </div>
 
+            <div class="sweep" {{#isSweep}}style="display: block"{{/isSweep}}>
+                <p>
+                    <label>
+                        Origin:
+                        <input class="param-origin" type="text" value="{{origin}}" />
+                    </label>
+                    <label>
+                        Duration:
+                        <input class="param-duration" type="text" value="{{duration}}" placeholder="Optional" />
+                    </label>
+                </p>
+                <p>
+                    <label>
+                        Start Heading:
+                        <input class="param-startHeading" type="text" value="{{startHeading}}" placeholder="Optional" />
+                    </label>
+                    <label>
+                        Finish Heading:
+                        <input class="param-finishHeading" type="text" value="{{finishHeading}}" placeholder="Optional" />
+                    </label>
+                </p>
+            </div>
+
             <div class="manual" {{#isManual}}style="display: block"{{/isManual}}>
                 <textarea placeholder="Paste a manual config object here" class="param-frames">{{framesAsJson}}</textarea>
             </div>
@@ -511,8 +544,8 @@
     <script type="text/javascript">
 
         var sva = new window.streetviewanimator.movie({
-            'debug': true,
-            'playerDebug': true,
+            'debug': false,
+            'playerDebug': false,
             'router': {
                 'apiKey': null
             },
@@ -692,15 +725,30 @@
 
                 var scene = {
                     'id': 'scene-' + (index+1),
-                    'type': $(element).find('.param-type:checked').val() || 'AUTO',
-                    'origin': $(element).find('.param-origin').val() || null,
-                    'destination': $(element).find('.param-destination').val() || null,
-                    'target': $(element).find('.param-target').val() || null,
-                    'duration': parseInt($(element).find('.param-duration').val(), 10) || null,
-                    'pitch': parseInt($(element).find('.param-pitch').val(), 10) || null,
-                    'fov': parseInt($(element).find('.param-fov').val(), 10) || null,
-                    'frames': $(element).find('.param-frames').val() || []
+                    'type': $(element).find('.param-type:checked').val() || 'AUTO'
                 };
+
+                //  Custom properties depending on scene type
+                if (scene.type === 'AUTO') {
+
+                    scene.origin = $(element).find('.auto .param-origin').val() || null;
+                    scene.destination = $(element).find('.auto .param-destination').val() || 0;
+                    scene.target = $(element).find('.auto .param-target').val() || null;
+                    scene.duration = parseInt($(element).find('.auto .param-duration').val(), 10) || null;
+                    scene.pitch = parseInt($(element).find('.auto .param-pitch').val(), 10) || null;
+                    scene.fov = parseInt($(element).find('.auto .param-fov').val(), 10) || null;
+
+                } else if (scene.type === 'SWEEP') {
+
+                    scene.origin = $(element).find('.sweep .param-origin').val() || null;
+                    scene.duration = parseInt($(element).find('.sweep .param-duration').val(), 10) || 0;
+                    scene.startHeading = parseInt($(element).find('.sweep .param-startHeading').val(), 10) || 0;
+                    scene.finishHeading = parseInt($(element).find('.sweep .param-finishHeading').val(), 10) || 0;
+
+                } else {
+
+                    scene.frames = $(element).find('.param-frames').val() || [];
+                }
 
                 if (typeof scene.frames === 'string' && scene.frames.length) {
 
@@ -764,11 +812,19 @@
             if ($(this).val() === 'AUTO') {
 
                 $(this).closest('li').find('.auto').show();
+                $(this).closest('li').find('.sweep').hide();
+                $(this).closest('li').find('.manual').hide();
+
+            } else if ($(this).val() === 'SWEEP') {
+
+                $(this).closest('li').find('.auto').hide();
+                $(this).closest('li').find('.sweep').show();
                 $(this).closest('li').find('.manual').hide();
 
             } else {
 
                 $(this).closest('li').find('.auto').hide();
+                $(this).closest('li').find('.sweep').hide();
                 $(this).closest('li').find('.manual').show();
             }
         });
@@ -782,12 +838,21 @@
             if (tplData.type === 'AUTO') {
 
                 tplData.isAuto = true;
+                tplData.isSweep = false;
+                tplData.isManual = false;
+                tplData.framesAsJson = null;
+
+            } else if (tplData.type === 'SWEEP') {
+
+                tplData.isAuto = false;
+                tplData.isSweep = true;
                 tplData.isManual = false;
                 tplData.framesAsJson = null;
 
             } else if (tplData.type === 'MANUAL') {
 
                 tplData.isAuto = false;
+                tplData.isSweep = false;
                 tplData.isManual = true;
                 tplData.framesAsJson = JSON.stringify(tplData.frames, null, "\t");
             }
