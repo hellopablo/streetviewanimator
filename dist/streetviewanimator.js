@@ -187,6 +187,7 @@ window.streetviewanimator.movie = function(options) {
         onPlayerBufferStart: function(player) {},
         onPlayerBufferStop: function(player) {},
         onPlayerStop: function(player) {},
+        onPlayerFinish: function(player) {},
         onPlayerEnterFrame: function(player, currentFrame) {},
         onPlayerExitFrame: function(player, currentFrame) {},
         onPlayerLoop: function(player) {},
@@ -288,6 +289,9 @@ window.streetviewanimator.movie = function(options) {
             };
             base.options.player.onStop = function() {
                 base.options.onPlayerStop.call(this);
+            };
+            base.options.player.onFinish = function() {
+                base.options.onPlayerFinish.call(this);
             };
             base.options.player.onEnterFrame = function(currentFrame) {
                 base.playerEnterFrame.call(base, currentFrame);
